@@ -1,0 +1,6 @@
+@Tashlih.Api_HostAddress = http://localhost:5225
+
+GET {{Tashlih.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
