@@ -104,6 +104,8 @@ namespace Tashlih.Api
                        options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
             builder.Services.AddScoped<IFileService, FileService>();
+            builder.Services.AddScoped<IPartsService, PartsService>();
+            builder.Services.AddScoped<ILookupsService, LookupsService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ISupplierProfileService, SupplierProfileService>();
             builder.Services.AddScoped<IJwtService, JwtService>();

@@ -1259,100 +1259,104 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
 
+        // استبدل الكود القديم بهذا في TashlihContext.cs
+
         modelBuilder.Entity<VPartsDetailed>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToView("v_parts_detailed");
+            entity.HasNoKey();
+            entity.ToView("v_parts_detailed");
 
-            entity.Property(e => e.CategoryAr)
-                .HasMaxLength(100)
-                .HasColumnName("category_ar");
-            entity.Property(e => e.CategoryEn)
-                .HasMaxLength(100)
-                .HasColumnName("category_en");
-            entity.Property(e => e.Condition)
-                .HasMaxLength(20)
-                .HasColumnName("condition");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
-            entity.Property(e => e.DeliveryAvailable).HasColumnName("delivery_available");
-            entity.Property(e => e.DeliveryByShop).HasColumnName("delivery_by_shop");
-            entity.Property(e => e.Description).HasColumnName("description");
+            // معلومات أساسية
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.IsVerified).HasColumnName("is_verified");
-            entity.Property(e => e.MakeAr)
-                .HasMaxLength(100)
-                .HasColumnName("make_ar");
-            entity.Property(e => e.MakeEn)
-                .HasMaxLength(100)
-                .HasColumnName("make_en");
-            entity.Property(e => e.ModelAr)
-                .HasMaxLength(100)
-                .HasColumnName("model_ar");
-            entity.Property(e => e.ModelEn)
-                .HasMaxLength(100)
-                .HasColumnName("model_en");
-            entity.Property(e => e.NameAr)
-                .HasMaxLength(200)
-                .HasColumnName("name_ar");
-            entity.Property(e => e.NameEn)
-                .HasMaxLength(200)
-                .HasColumnName("name_en");
-            entity.Property(e => e.OemNumber)
-                .HasMaxLength(50)
-                .HasColumnName("oem_number");
-            entity.Property(e => e.OriginalPrice)
-                .HasColumnType("decimal(10, 2)")
-                .HasColumnName("original_price");
-            entity.Property(e => e.PartNumber)
-                .HasMaxLength(50)
-                .HasColumnName("part_number");
-            entity.Property(e => e.Price)
-                .HasColumnType("decimal(10, 2)")
-                .HasColumnName("price");
-            entity.Property(e => e.PrimaryImage)
-                .HasMaxLength(500)
-                .HasColumnName("primary_image");
-            entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.RatingAverage)
-                .HasColumnType("decimal(3, 2)")
-                .HasColumnName("rating_average");
-            entity.Property(e => e.ShopCity)
-                .HasMaxLength(50)
-                .HasColumnName("shop_city");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
-            entity.Property(e => e.ShopNameAr)
-                .HasMaxLength(150)
-                .HasColumnName("shop_name_ar");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasColumnName("status");
-            entity.Property(e => e.SubcategoryAr)
-                .HasMaxLength(100)
-                .HasColumnName("subcategory_ar");
-            entity.Property(e => e.SubcategoryEn)
-                .HasMaxLength(100)
-                .HasColumnName("subcategory_en");
-            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
-            entity.Property(e => e.SupplierName)
-                .HasMaxLength(150)
-                .HasColumnName("supplier_name");
-            entity.Property(e => e.VehicleTypeAr)
-                .HasMaxLength(100)
-                .HasColumnName("vehicle_type_ar");
-            entity.Property(e => e.VehicleTypeEn)
-                .HasMaxLength(100)
-                .HasColumnName("vehicle_type_en");
+            entity.Property(e => e.NameAr).HasMaxLength(200).HasColumnName("name_ar");
+            entity.Property(e => e.NameEn).HasMaxLength(200).HasColumnName("name_en");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.PartNumber).HasMaxLength(50).HasColumnName("part_number");
+            entity.Property(e => e.OemNumber).HasMaxLength(50).HasColumnName("oem_number");
+            entity.Property(e => e.Condition).HasMaxLength(20).HasColumnName("condition");
+            entity.Property(e => e.ConditionDetails).HasColumnName("condition_details");
+            entity.Property(e => e.WarrantyType).HasMaxLength(20).HasColumnName("warranty_type");
+            entity.Property(e => e.WarrantyDays).HasColumnName("warranty_days");
+            entity.Property(e => e.Price).HasColumnType("decimal(10, 2)").HasColumnName("price");
+            entity.Property(e => e.OriginalPrice).HasColumnType("decimal(10, 2)").HasColumnName("original_price");
+            entity.Property(e => e.Currency).HasMaxLength(3).HasColumnName("currency");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.IsFeatured).HasColumnName("is_featured");
+            entity.Property(e => e.FeaturedUntil).HasColumnName("featured_until");
             entity.Property(e => e.ViewsCount).HasColumnName("views_count");
-            entity.Property(e => e.VinNumber)
-                .HasMaxLength(17)
-                .HasColumnName("vin_number");
-            entity.Property(e => e.WarrantyType)
-                .HasMaxLength(20)
-                .HasColumnName("warranty_type");
+            entity.Property(e => e.SalesCount).HasColumnName("sales_count");
+            entity.Property(e => e.FavoritesCount).HasColumnName("favorites_count");
+
+            // التصنيف
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CategoryNameAr).HasMaxLength(100).HasColumnName("category_name_ar");
+            entity.Property(e => e.CategoryNameEn).HasMaxLength(100).HasColumnName("category_name_en");
+            entity.Property(e => e.CustomCategory).HasMaxLength(100).HasColumnName("custom_category");
+
+            // نوع المركبة
+            entity.Property(e => e.VehicleTypeId).HasColumnName("vehicle_type_id");
+            entity.Property(e => e.VehicleTypeNameAr).HasMaxLength(100).HasColumnName("vehicle_type_name_ar");
+            entity.Property(e => e.VehicleTypeNameEn).HasMaxLength(100).HasColumnName("vehicle_type_name_en");
+            entity.Property(e => e.CustomVehicleType).HasMaxLength(100).HasColumnName("custom_vehicle_type");
+
+            // التصنيف الفرعي
+            entity.Property(e => e.VehicleSubcategoryId).HasColumnName("vehicle_subcategory_id");
+            entity.Property(e => e.SubcategoryNameAr).HasMaxLength(100).HasColumnName("subcategory_name_ar");
+            entity.Property(e => e.SubcategoryNameEn).HasMaxLength(100).HasColumnName("subcategory_name_en");
+            entity.Property(e => e.CustomSubcategory).HasMaxLength(100).HasColumnName("custom_subcategory");
+
+            // الشركة المصنعة
+            entity.Property(e => e.MakeId).HasColumnName("make_id");
+            entity.Property(e => e.MakeNameAr).HasMaxLength(100).HasColumnName("make_name_ar");
+            entity.Property(e => e.MakeNameEn).HasMaxLength(100).HasColumnName("make_name_en");
+            entity.Property(e => e.MakeLogoUrl).HasMaxLength(500).HasColumnName("make_logo_url");
+            entity.Property(e => e.CustomMake).HasMaxLength(100).HasColumnName("custom_make");
+
+            // الموديل
+            entity.Property(e => e.ModelId).HasColumnName("model_id");
+            entity.Property(e => e.ModelNameAr).HasMaxLength(100).HasColumnName("model_name_ar");
+            entity.Property(e => e.ModelNameEn).HasMaxLength(100).HasColumnName("model_name_en");
+            entity.Property(e => e.CustomModel).HasMaxLength(100).HasColumnName("custom_model");
+
+            // السنوات
             entity.Property(e => e.YearFrom).HasColumnName("year_from");
             entity.Property(e => e.YearTo).HasColumnName("year_to");
-        });
+            entity.Property(e => e.VinNumber).HasMaxLength(17).HasColumnName("vin_number");
+
+            // التوصيل
+            entity.Property(e => e.DeliveryAvailable).HasColumnName("delivery_available");
+            entity.Property(e => e.DeliveryByShop).HasColumnName("delivery_by_shop");
+            entity.Property(e => e.DeliveryNotes).HasMaxLength(500).HasColumnName("delivery_notes");
+
+            // معلومات المتجر
+            entity.Property(e => e.ShopNameAr).HasMaxLength(150).HasColumnName("shop_name_ar");
+            entity.Property(e => e.ShopNameEn).HasMaxLength(150).HasColumnName("shop_name_en");
+            entity.Property(e => e.ShopCity).HasMaxLength(50).HasColumnName("shop_city");
+            entity.Property(e => e.ShopDistrict).HasMaxLength(50).HasColumnName("shop_district");
+            entity.Property(e => e.ShopPhone).HasMaxLength(20).HasColumnName("shop_phone");
+            entity.Property(e => e.ShopWhatsapp).HasMaxLength(20).HasColumnName("shop_whatsapp");
+
+            // معلومات المورد
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.SupplierName).HasMaxLength(150).HasColumnName("supplier_name");
+            entity.Property(e => e.BusinessNameAr).HasMaxLength(150).HasColumnName("business_name_ar");
+            entity.Property(e => e.BusinessNameEn).HasMaxLength(150).HasColumnName("business_name_en");
+            entity.Property(e => e.SupplierIsVerified).HasColumnName("supplier_is_verified");
+            entity.Property(e => e.SupplierVerificationStatus).HasMaxLength(20).HasColumnName("supplier_verification_status");
+            entity.Property(e => e.SupplierRating).HasColumnType("decimal(3, 2)").HasColumnName("supplier_rating");
+            entity.Property(e => e.SupplierRatingCount).HasColumnName("supplier_rating_count");
+
+            // الصور
+            entity.Property(e => e.PrimaryImageUrl).HasMaxLength(500).HasColumnName("primary_image_url");
+            entity.Property(e => e.ImagesCount).HasColumnName("images_count");
+
+            // التواريخ
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+        });   
 
         modelBuilder.Entity<VehicleMake>(entity =>
         {
