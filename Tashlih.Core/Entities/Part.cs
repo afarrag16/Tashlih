@@ -7,7 +7,7 @@ public partial class Part
 {
     public long Id { get; set; }
 
-    public long ShopId { get; set; }
+    public long SupplierId { get; set; }
 
     public long? CategoryId { get; set; }
 
@@ -97,7 +97,7 @@ public partial class Part
 
     public virtual ICollection<PartImage> PartImages { get; set; } = new List<PartImage>();
 
-    public virtual Shop Shop { get; set; } = null!;
+    public virtual SupplierProfile Supplier { get; set; } = null!;
 
     public virtual VehicleSubcategory? VehicleSubcategory { get; set; }
 

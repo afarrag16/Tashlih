@@ -96,7 +96,6 @@ namespace Tashlih.Infrastructure.Services
              ? null
              : request.Email.Trim().ToLower();
 
-
             if (email != null && await IsEmailExistsAsync(email))
             {
                 return new AuthResponse
@@ -107,6 +106,24 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
+            // ✅ التحقق من عدم تكرار السجل التجاري (CR)
+            if (!string.IsNullOrWhiteSpace(request.CommercialRegisterNumber))
+            {
+                bool crExists = await _context.SupplierProfiles
+                    .AnyAsync(s =>
+                        s.CommercialRegister == request.CommercialRegisterNumber &&
+                        s.DeletedAt == null);
+
+                if (crExists)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Commercial register already registered",
+                        MessageAr = "السجل التجاري مسجل مسبقاً"
+                    };
+                }
+            }
 
             try
             {
@@ -119,6 +136,16 @@ namespace Tashlih.Infrastructure.Services
                     request.IdentityImage,
                     "suppliers/identity"
                 );
+
+                // ✅ رفع اللوقو إن وجد
+                string? logoUrl = null;
+                if (request.Logo != null)
+                {
+                    logoUrl = await _fileService.UploadFileAsync(
+                        request.Logo,
+                        "suppliers/logos"
+                    );
+                }
 
                 var supplier = new SupplierProfile
                 {
@@ -135,6 +162,9 @@ namespace Tashlih.Infrastructure.Services
                     CommercialRegister = request.CommercialRegisterNumber,
                     CommercialRegisterImageUrl = crImageUrl,
                     IdFrontUrl = idImageUrl,
+                    LogoUrl = logoUrl,                    // ✅ جديد
+                    Latitude = request.Latitude,          // ✅ جديد
+                    Longitude = request.Longitude,        // ✅ جديد
                     Status = "active",
                     VerificationStatus = "pending",
                     IsVerified = false,
@@ -145,25 +175,6 @@ namespace Tashlih.Infrastructure.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                // ✅ التحقق من عدم تكرار السجل التجاري (CR)
-                if (!string.IsNullOrWhiteSpace(request.CommercialRegisterNumber))
-                {
-                    bool crExists = await _context.SupplierProfiles
-                        .AnyAsync(s =>
-                            s.CommercialRegister == request.CommercialRegisterNumber &&
-                            s.DeletedAt == null);
-
-                    if (crExists)
-                    {
-                        return new AuthResponse
-                        {
-                            Success = false,
-                            Message = "Commercial register already registered",
-                            MessageAr = "السجل التجاري مسجل مسبقاً"
-                        };
-                    }
-                }
-
 
                 _context.SupplierProfiles.Add(supplier);
                 await _context.SaveChangesAsync();
@@ -180,9 +191,7 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
         }
-
         #endregion
-
         #region تسجيل الدخول
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)

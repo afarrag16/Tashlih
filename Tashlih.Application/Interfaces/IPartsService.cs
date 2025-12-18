@@ -65,9 +65,9 @@ namespace Tashlih.Application.Interfaces
         Task<PartsListResponse> GetPartsByCategoryAsync(long categoryId, int page = 1, int pageSize = 20);
 
         /// <summary>
-        /// عرض قطع حسب المتجر
+        /// عرض قطع حسب المورد
         /// </summary>
-        Task<PartsListResponse> GetPartsByShopAsync(long shopId, int page = 1, int pageSize = 20);
+        Task<PartsListResponse> GetPartsBySupplierAsync(long supplierId, int page = 1, int pageSize = 20);
 
         /// <summary>
         /// عرض القطع المميزة

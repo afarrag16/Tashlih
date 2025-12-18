@@ -221,8 +221,7 @@ namespace Tashlih.Application.DTOs.Parts
     public class PartDto
     {
         public long Id { get; set; }
-        public long ShopId { get; set; }
-        public string? ShopName { get; set; }
+      
         public long SupplierId { get; set; }
         public string? SupplierName { get; set; }
         public string? City { get; set; }
@@ -354,7 +353,7 @@ namespace Tashlih.Application.DTOs.Parts
         public string? Condition { get; set; }
         public string? ConditionAr { get; set; }
         public string? City { get; set; }
-        public string? ShopName { get; set; }
+        public string? SupplierName { get; set; }
         public string? MakeDisplay { get; set; }
         public string? ModelDisplay { get; set; }
         public string? YearRange { get; set; }

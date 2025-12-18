@@ -43,7 +43,7 @@ public partial class TashlihContext : DbContext
 
     public virtual DbSet<Review> Reviews { get; set; }
 
-    public virtual DbSet<Shop> Shops { get; set; }
+   
 
     public virtual DbSet<Subscription> Subscriptions { get; set; }
 
@@ -56,8 +56,9 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<SupplierSession> SupplierSessions { get; set; } 
 
     public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<City> Cities { get; set; }
 
-   
+
 
     public virtual DbSet<UserSession> UserSessions { get; set; }
 
@@ -393,10 +394,7 @@ public partial class TashlihContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_orders_customer");
 
-            entity.HasOne(d => d.Shop).WithMany(p => p.Orders)
-                .HasForeignKey(d => d.ShopId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_orders_shop");
+          
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.SupplierId)
@@ -464,7 +462,7 @@ public partial class TashlihContext : DbContext
 
             entity.HasIndex(e => e.Price, "idx_parts_price");
 
-            entity.HasIndex(e => e.ShopId, "idx_parts_shop");
+            entity.HasIndex(e => e.SupplierId, "idx_parts_supplier");
 
             entity.HasIndex(e => e.Status, "idx_parts_status");
 
@@ -535,7 +533,7 @@ public partial class TashlihContext : DbContext
                 .HasDefaultValue(1)
                 .HasColumnName("quantity");
             entity.Property(e => e.SalesCount).HasColumnName("sales_count");
-            entity.Property(e => e.ShopId).HasColumnName("shop_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("available")
@@ -572,9 +570,9 @@ public partial class TashlihContext : DbContext
                 .HasForeignKey(d => d.ModelId)
                 .HasConstraintName("FK_parts_model");
 
-            entity.HasOne(d => d.Shop).WithMany(p => p.Parts)
-                .HasForeignKey(d => d.ShopId)
-                .HasConstraintName("FK_parts_shop");
+            entity.HasOne(d => d.Supplier).WithMany(p => p.Parts)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("fk_parts_supplier");
 
             entity.HasOne(d => d.VehicleSubcategory).WithMany(p => p.Parts)
                 .HasForeignKey(d => d.VehicleSubcategoryId)
@@ -742,70 +740,7 @@ public partial class TashlihContext : DbContext
                 .HasConstraintName("FK_reviews_supplier");
         });
 
-        modelBuilder.Entity<Shop>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__shops__3213E83FF4F788A3");
-
-            entity.ToTable("shops");
-
-            entity.HasIndex(e => e.City, "idx_shops_city");
-
-            entity.HasIndex(e => e.Status, "idx_shops_status");
-
-            entity.HasIndex(e => e.SupplierId, "idx_shops_supplier");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Address).HasColumnName("address");
-            entity.Property(e => e.City)
-                .HasMaxLength(50)
-                .HasColumnName("city");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnName("created_at");
-            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.District)
-                .HasMaxLength(100)
-                .HasColumnName("district");
-            entity.Property(e => e.IsMain).HasColumnName("is_main");
-            entity.Property(e => e.Latitude)
-                .HasColumnType("decimal(10, 8)")
-                .HasColumnName("latitude");
-            entity.Property(e => e.LocationUrl)
-                .HasMaxLength(500)
-                .HasColumnName("location_url");
-            entity.Property(e => e.Longitude)
-                .HasColumnType("decimal(11, 8)")
-                .HasColumnName("longitude");
-            entity.Property(e => e.NameAr)
-                .HasMaxLength(150)
-                .HasColumnName("name_ar");
-            entity.Property(e => e.NameEn)
-                .HasMaxLength(150)
-                .HasColumnName("name_en");
-            entity.Property(e => e.Phone)
-                .HasMaxLength(20)
-                .HasColumnName("phone");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValue("active")
-                .HasColumnName("status");
-            entity.Property(e => e.Street)
-                .HasMaxLength(200)
-                .HasColumnName("street");
-            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.Whatsapp)
-                .HasMaxLength(20)
-                .HasColumnName("whatsapp");
-            entity.Property(e => e.WorkingHours).HasColumnName("working_hours");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.Shops)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("FK_shops_supplier");
-        });
+       
 
         modelBuilder.Entity<Subscription>(entity =>
         {
@@ -1015,6 +950,17 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("inactive")
                 .HasColumnName("status");
+            entity.Property(e => e.LogoUrl)
+                  .HasColumnName("logo_url")
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.Latitude)
+                .HasColumnName("latitude")
+                .HasColumnType("decimal(10, 8)");
+
+            entity.Property(e => e.Longitude)
+                .HasColumnName("longitude")
+                .HasColumnType("decimal(11, 8)");
             entity.Property(e => e.TaxNumber)
                 .HasMaxLength(50)
                 .HasColumnName("tax_number");
@@ -1114,9 +1060,57 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("customer")
                 .HasColumnName("user_type");
+            entity.Property(e => e.Street)
+                .HasColumnName("street")
+                .HasMaxLength(255);
+
+            entity.Property(e => e.CityId)
+                .HasColumnName("city_id");
+
+            entity.Property(e => e.PostalCode)
+                .HasColumnName("postal_code")
+                .HasMaxLength(20);
+
+            entity.Property(e => e.Latitude)
+                .HasColumnName("latitude")
+                .HasColumnType("decimal(10, 8)");
+
+            entity.Property(e => e.Longitude)
+                .HasColumnName("longitude")
+                .HasColumnType("decimal(11, 8)");
+
+            entity.HasOne(d => d.City)
+                .WithMany()
+                .HasForeignKey(d => d.CityId)
+                .HasConstraintName("fk_users_city")
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-       
+        modelBuilder.Entity<City>(entity =>
+        {
+            entity.ToTable("cities");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("id");
+
+            entity.Property(e => e.NameAr)
+                .HasColumnName("name_ar")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.NameEn)
+                .HasColumnName("name_en")
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true);
+        });
+
+
         modelBuilder.Entity<UserSession>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__user_ses__3213E83F4FF0898D");
@@ -1268,7 +1262,7 @@ public partial class TashlihContext : DbContext
 
             // معلومات أساسية
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.ShopId).HasColumnName("shop_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.NameAr).HasMaxLength(200).HasColumnName("name_ar");
             entity.Property(e => e.NameEn).HasMaxLength(200).HasColumnName("name_en");
             entity.Property(e => e.Description).HasColumnName("description");
@@ -1330,19 +1324,17 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.DeliveryByShop).HasColumnName("delivery_by_shop");
             entity.Property(e => e.DeliveryNotes).HasMaxLength(500).HasColumnName("delivery_notes");
 
-            // معلومات المتجر
-            entity.Property(e => e.ShopNameAr).HasMaxLength(150).HasColumnName("shop_name_ar");
-            entity.Property(e => e.ShopNameEn).HasMaxLength(150).HasColumnName("shop_name_en");
-            entity.Property(e => e.ShopCity).HasMaxLength(50).HasColumnName("shop_city");
-            entity.Property(e => e.ShopDistrict).HasMaxLength(50).HasColumnName("shop_district");
-            entity.Property(e => e.ShopPhone).HasMaxLength(20).HasColumnName("shop_phone");
-            entity.Property(e => e.ShopWhatsapp).HasMaxLength(20).HasColumnName("shop_whatsapp");
+          
 
             // معلومات المورد
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.SupplierName).HasMaxLength(150).HasColumnName("supplier_name");
             entity.Property(e => e.BusinessNameAr).HasMaxLength(150).HasColumnName("business_name_ar");
             entity.Property(e => e.BusinessNameEn).HasMaxLength(150).HasColumnName("business_name_en");
+            entity.Property(e => e.SupplierCity).HasColumnName("supplier_city");
+            entity.Property(e => e.SupplierDistrict).HasColumnName("supplier_district");
+            entity.Property(e => e.SupplierPhone).HasColumnName("supplier_phone");
+            entity.Property(e => e.SupplierLogoUrl).HasColumnName("supplier_logo_url");
             entity.Property(e => e.SupplierIsVerified).HasColumnName("supplier_is_verified");
             entity.Property(e => e.SupplierVerificationStatus).HasMaxLength(20).HasColumnName("supplier_verification_status");
             entity.Property(e => e.SupplierRating).HasColumnType("decimal(3, 2)").HasColumnName("supplier_rating");

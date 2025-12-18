@@ -112,9 +112,14 @@ namespace Tashlih.Application.DTOs.Auth
         // الهوية
         [Required(ErrorMessage = "صورة الهوية مطلوبة")]
         public IFormFile IdentityImage { get; set; } = null!;
+    public IFormFile? Logo { get; set; }
 
-        // إعدادات
-        public string PreferredLanguage { get; set; } = "ar";
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
+    // إعدادات
+    public string PreferredLanguage { get; set; } = "ar";
         public string? DeviceType { get; set; }
         public string? DeviceName { get; set; }
         public string? FcmToken { get; set; }

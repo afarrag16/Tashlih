@@ -27,6 +27,13 @@ public partial class User
     public bool NotificationsEnabled { get; set; }
     public string? OtpCode { get; set; }
     public DateTime? OtpExpiresAt { get; set; }
+    public string? Street { get; set; }
+    public int? CityId { get; set; }
+    public string? PostalCode { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+
+    public virtual City? City { get; set; }
 
 
     public DateTime? LastLoginAt { get; set; }

@@ -120,24 +120,7 @@ namespace Tashlih.Api.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// حذف صورة من القطعة (للمورد)
-        /// </summary>
-        [HttpDelete("{partId}/images/{imageId}")]
-        [Authorize]
-        public async Task<IActionResult> DeletePartImage(long partId, long imageId)
-        {
-            if (!IsSupplier())
-                return Forbid();
-
-            var supplierId = GetUserId();
-            var result = await _partsService.DeletePartImageAsync(supplierId, partId, imageId);
-
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
-        }
+       
 
         /// <summary>
         /// تعيين صورة رئيسية (للمورد)
@@ -211,14 +194,14 @@ namespace Tashlih.Api.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// عرض قطع حسب المتجر
+        // <summary>
+        /// عرض قطع حسب المورد
         /// </summary>
-        [HttpGet("shop/{shopId}")]
+        [HttpGet("supplier/{supplierId}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetPartsByShop(long shopId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetPartsBySupplier(long supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var result = await _partsService.GetPartsByShopAsync(shopId, page, pageSize);
+            var result = await _partsService.GetPartsBySupplierAsync(supplierId, page, pageSize);
             return Ok(result);
         }
 

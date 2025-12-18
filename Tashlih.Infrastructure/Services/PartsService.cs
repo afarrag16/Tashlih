@@ -28,24 +28,24 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartResponse> CreatePartAsync(long supplierId, CreatePartRequest request)
         {
-            // التحقق من وجود متجر للمورد
-            var shop = await _context.Shops
-                .FirstOrDefaultAsync(s => s.SupplierId == supplierId && s.Status == "active");
+            // التحقق من وجود المورد وأنه موثق
+            var supplier = await _context.SupplierProfiles
+                .FirstOrDefaultAsync(s => s.Id == supplierId && s.IsVerified && s.Status == "active");
 
-            if (shop == null)
+            if (supplier == null)
             {
                 return new PartResponse
                 {
                     Success = false,
-                    Message = "You don't have an active shop",
-                    MessageAr = "ليس لديك متجر نشط"
+                    Message = "Supplier not found or not verified",
+                    MessageAr = "المورد غير موجود أو غير موثق"
                 };
             }
 
             // إنشاء القطعة
             var part = new Part
             {
-                ShopId = shop.Id,
+                SupplierId = supplierId,
                 NameAr = request.NameAr,
                 NameEn = request.NameEn,
                 Description = request.Description,
@@ -132,8 +132,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> UpdatePartAsync(long supplierId, long partId, UpdatePartRequest request)
         {
             var part = await _context.Parts
-                .Include(p => p.Shop)
-                .FirstOrDefaultAsync(p => p.Id == partId && p.Shop.SupplierId == supplierId);
+                .FirstOrDefaultAsync(p => p.Id == partId && p.SupplierId == supplierId);
 
             if (part == null)
             {
@@ -203,8 +202,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> DeletePartAsync(long supplierId, long partId)
         {
             var part = await _context.Parts
-                .Include(p => p.Shop)
-                .FirstOrDefaultAsync(p => p.Id == partId && p.Shop.SupplierId == supplierId);
+                .FirstOrDefaultAsync(p => p.Id == partId && p.SupplierId == supplierId);
 
             if (part == null)
             {
@@ -285,9 +283,8 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> AddPartImageAsync(long supplierId, long partId, AddPartImageRequest request)
         {
             var part = await _context.Parts
-                .Include(p => p.Shop)
                 .Include(p => p.PartImages)
-                .FirstOrDefaultAsync(p => p.Id == partId && p.Shop.SupplierId == supplierId);
+                .FirstOrDefaultAsync(p => p.Id == partId && p.SupplierId == supplierId);
 
             if (part == null)
             {
@@ -356,8 +353,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> DeletePartImageAsync(long supplierId, long partId, long imageId)
         {
             var part = await _context.Parts
-                .Include(p => p.Shop)
-                .FirstOrDefaultAsync(p => p.Id == partId && p.Shop.SupplierId == supplierId);
+                .FirstOrDefaultAsync(p => p.Id == partId && p.SupplierId == supplierId);
 
             if (part == null)
             {
@@ -427,9 +423,8 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> SetPrimaryImageAsync(long supplierId, long partId, long imageId)
         {
             var part = await _context.Parts
-                .Include(p => p.Shop)
                 .Include(p => p.PartImages)
-                .FirstOrDefaultAsync(p => p.Id == partId && p.Shop.SupplierId == supplierId);
+                .FirstOrDefaultAsync(p => p.Id == partId && p.SupplierId == supplierId);
 
             if (part == null)
             {
@@ -631,7 +626,7 @@ namespace Tashlih.Infrastructure.Services
             // فلترة بالمدينة
             if (!string.IsNullOrEmpty(request.City))
             {
-                query = query.Where(p => p.ShopCity == request.City);
+                query = query.Where(p => p.SupplierCity == request.City);
             }
 
             // فلترة بالضمان
@@ -738,12 +733,12 @@ namespace Tashlih.Infrastructure.Services
         }
 
         /// <summary>
-        /// جلب قطع حسب المتجر
+        /// جلب قطع حسب المورد
         /// </summary>
-        public async Task<PartsListResponse> GetPartsByShopAsync(long shopId, int page, int pageSize)
+        public async Task<PartsListResponse> GetPartsBySupplierAsync(long supplierId, int page, int pageSize)
         {
             var query = _context.VPartsDetaileds
-                .Where(p => p.Status == "available" && p.ShopId == shopId);
+                .Where(p => p.Status == "available" && p.SupplierId == supplierId);
 
             var totalItems = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
@@ -864,11 +859,9 @@ namespace Tashlih.Infrastructure.Services
             return new PartDto
             {
                 Id = view.Id,
-                ShopId = view.ShopId,
-                ShopName = view.ShopNameAr,
                 SupplierId = view.SupplierId,
                 SupplierName = view.SupplierName,
-                City = view.ShopCity,
+                City = view.SupplierCity,
 
                 NameAr = view.NameAr,
                 NameEn = view.NameEn,

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Tashlih.Core.Entities;
 
@@ -7,7 +6,7 @@ public partial class VPartsDetailed
 {
     // معلومات القطعة الأساسية
     public long Id { get; set; }
-    public long ShopId { get; set; }
+    public long SupplierId { get; set; }
     public string NameAr { get; set; } = null!;
     public string? NameEn { get; set; }
     public string? Description { get; set; }
@@ -69,19 +68,14 @@ public partial class VPartsDetailed
     public bool DeliveryByShop { get; set; }
     public string? DeliveryNotes { get; set; }
 
-    // معلومات المتجر
-    public string? ShopNameAr { get; set; }
-    public string? ShopNameEn { get; set; }
-    public string? ShopCity { get; set; }
-    public string? ShopDistrict { get; set; }
-    public string? ShopPhone { get; set; }
-    public string? ShopWhatsapp { get; set; }
-
     // معلومات المورد
-    public long SupplierId { get; set; }
     public string? SupplierName { get; set; }
     public string? BusinessNameAr { get; set; }
     public string? BusinessNameEn { get; set; }
+    public string? SupplierCity { get; set; }
+    public string? SupplierDistrict { get; set; }
+    public string? SupplierPhone { get; set; }
+    public string? SupplierLogoUrl { get; set; }
     public bool SupplierIsVerified { get; set; }
     public string? SupplierVerificationStatus { get; set; }
     public decimal? SupplierRating { get; set; }

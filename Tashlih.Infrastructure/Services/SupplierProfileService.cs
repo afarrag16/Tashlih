@@ -27,7 +27,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<SupplierProfileResponse> GetMyProfileAsync(long supplierId)
         {
             var profile = await _context.SupplierProfiles
-                .Include(s => s.Shops)
+               
                 .FirstOrDefaultAsync(s => s.Id == supplierId && s.DeletedAt == null);
 
             if (profile == null)
@@ -41,7 +41,7 @@ namespace Tashlih.Infrastructure.Services
             }
 
             var partsCount = await _context.Parts
-                .Where(p => p.Shop.SupplierId == profile.Id && p.DeletedAt == null)
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null)
                 .CountAsync();
 
             return new SupplierProfileResponse
@@ -59,7 +59,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<SupplierProfileResponse> GetProfileByIdAsync(long supplierId)
         {
             var profile = await _context.SupplierProfiles
-                .Include(s => s.Shops)
+               
                 .FirstOrDefaultAsync(s => s.Id == supplierId && s.Status == "active" && s.DeletedAt == null);
 
             if (profile == null)
@@ -73,7 +73,7 @@ namespace Tashlih.Infrastructure.Services
             }
 
             var partsCount = await _context.Parts
-                .Where(p => p.Shop.SupplierId == profile.Id && p.DeletedAt == null && p.Status == "available")
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null && p.Status == "available")
                 .CountAsync();
 
             return new SupplierProfileResponse
@@ -141,7 +141,7 @@ namespace Tashlih.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             var partsCount = await _context.Parts
-                .Where(p => p.Shop.SupplierId == profile.Id && p.DeletedAt == null)
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null)
                 .CountAsync();
 
             return new SupplierProfileResponse
@@ -479,6 +479,8 @@ namespace Tashlih.Infrastructure.Services
                 profile.VerifiedAt = DateTime.UtcNow;
                 profile.VerifiedBy = adminId;
                 profile.RejectionReason = null;
+
+               
             }
             else
             {
@@ -527,21 +529,16 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
-            var shopIds = await _context.Shops
-                .Where(s => s.SupplierId == profile.Id && s.DeletedAt == null)
-                .Select(s => s.Id)
-                .ToListAsync();
-
             var totalParts = await _context.Parts
-                .Where(p => shopIds.Contains(p.ShopId) && p.DeletedAt == null)
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null)
                 .CountAsync();
 
             var availableParts = await _context.Parts
-                .Where(p => shopIds.Contains(p.ShopId) && p.DeletedAt == null && p.Status == "available")
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null && p.Status == "available")
                 .CountAsync();
 
             var soldParts = await _context.Parts
-                .Where(p => shopIds.Contains(p.ShopId) && p.DeletedAt == null && p.Status == "sold")
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null && p.Status == "sold")
                 .CountAsync();
 
             var orders = await _context.Orders
@@ -549,7 +546,7 @@ namespace Tashlih.Infrastructure.Services
                 .ToListAsync();
 
             var totalViews = await _context.Parts
-                .Where(p => shopIds.Contains(p.ShopId) && p.DeletedAt == null)
+                .Where(p => p.SupplierId == profile.Id && p.DeletedAt == null)
                 .SumAsync(p => (int?)p.ViewsCount ?? 0);
 
             var totalRevenue = orders
@@ -571,7 +568,6 @@ namespace Tashlih.Infrastructure.Services
                 MessageAr = "تم بنجاح",
                 Stats = new SupplierStatsDto
                 {
-                    TotalShops = shopIds.Count,
                     TotalParts = totalParts,
                     AvailableParts = availableParts,
                     SoldParts = soldParts,
@@ -622,7 +618,7 @@ namespace Tashlih.Infrastructure.Services
                 Status = profile.Status,
                 PreferredLanguage = profile.PreferredLanguage,
                 CreatedAt = profile.CreatedAt,
-                ShopsCount = profile.Shops?.Count(s => s.DeletedAt == null) ?? 0,
+               
                 PartsCount = partsCount
             };
         }

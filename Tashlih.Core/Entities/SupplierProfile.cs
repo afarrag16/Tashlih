@@ -39,6 +39,9 @@ public partial class SupplierProfile
     public DateOnly? LicenseExpiryDate { get; set; }
     public string? TaxCertificateUrl { get; set; }
     public string? TaxNumber { get; set; }
+    public string? LogoUrl { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
 
     // ========== التوثيق ==========
     public bool IsVerified { get; set; }
@@ -69,10 +72,11 @@ public partial class SupplierProfile
     public virtual User? User { get; set; }
     public virtual User? VerifiedByNavigation { get; set; }
     public virtual ICollection<SupplierSession> SupplierSessions { get; set; } = new List<SupplierSession>();
-    public virtual ICollection<Shop> Shops { get; set; } = new List<Shop>();
+   
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     public virtual ICollection<ChatThread> ChatThreads { get; set; } = new List<ChatThread>();
     public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
     public virtual ICollection<SubscriptionHistory> SubscriptionHistories { get; set; } = new List<SubscriptionHistory>();
+    public virtual ICollection<Part> Parts { get; set; } = new List<Part>();
 }

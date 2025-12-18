@@ -59,7 +59,7 @@ public partial class Order
 
     public virtual Review? Review { get; set; }
 
-    public virtual Shop Shop { get; set; } = null!;
+    
 
     public virtual SupplierProfile Supplier { get; set; } = null!;
 }

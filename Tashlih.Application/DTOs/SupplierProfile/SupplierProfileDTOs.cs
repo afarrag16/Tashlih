@@ -167,7 +167,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public string? Status { get; set; }
         public string? PreferredLanguage { get; set; }
         public DateTime? CreatedAt { get; set; }
-        public int ShopsCount { get; set; }
+        
         public int PartsCount { get; set; }
     }
 
