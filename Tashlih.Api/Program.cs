@@ -6,6 +6,8 @@ using Microsoft.OpenApi.Models;
 using System;
 using System.Text;
 using System.Text.Json.Serialization;
+using Tashlih.Api.Hubs;
+using Tashlih.Api.Services;
 using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Models;
 using Tashlih.Infrastructure.Services;
@@ -18,13 +20,13 @@ namespace Tashlih.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.WebHost.ConfigureKestrel(options =>
-            {
-                options.ListenAnyIP(7281, listenOptions =>
-                {
-                    listenOptions.UseHttps();
-                });
-            });
+            //builder.WebHost.ConfigureKestrel(options =>
+            //{
+            //    options.ListenAnyIP(7281, listenOptions =>
+            //    {
+            //        listenOptions.UseHttps();
+            //    });
+            //});
 
             builder.Services.AddControllers()
                              .AddJsonOptions(options =>
@@ -94,6 +96,23 @@ namespace Tashlih.Api
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
                     ClockSkew = TimeSpan.Zero
                 };
+
+                // ✅ أضف ده للـ SignalR
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             builder.Services.AddAuthorization();
@@ -102,12 +121,15 @@ namespace Tashlih.Api
             #region Database & Services
             builder.Services.AddDbContext<TashlihContext>(options =>
                        options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+            //var connectionString = "Server=localhost;Database=Tashlih;User Id=sa;Password=Rekj@10170;TrustServerCertificate=True;";
 
+            //builder.Services.AddDbContext<TashlihContext>(options =>
+            //    options.UseSqlServer(connectionString));
             builder.Services.AddScoped<IFileService, FileService>();
             builder.Services.AddScoped<IPartsService, PartsService>();
             builder.Services.AddScoped<ILookupsService, LookupsService>();
             builder.Services.AddScoped<ICustomerProfileService, CustomerProfileService>();
-            
+            builder.Services.AddScoped<IChatService, ChatService>();
             builder.Services.AddScoped<ISuppliersService, SuppliersService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ISupplierProfileService, SupplierProfileService>();
@@ -116,17 +138,43 @@ namespace Tashlih.Api
 
             #endregion
 
+            #region SignalR Services
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy
+                        .SetIsOriginAllowed(_ => true)  // يسمح لأي domain
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();  // ✅ مهم للـ SignalR
+                });
+            });
+
+           
+
+           
+
+           
+            #endregion
+            // SignalR
+            builder.Services.AddSignalR();
+            builder.Services.AddScoped<IChatHubService, ChatHubService>();
             var app = builder.Build();
+            app.UseCors("AllowAll");  // CORS 
 
             app.UseSwagger();
             app.UseSwaggerUI();
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // SignalR Hub
+            app.MapHub<ChatHub>("/chathub");
 
             app.Run();
         }
