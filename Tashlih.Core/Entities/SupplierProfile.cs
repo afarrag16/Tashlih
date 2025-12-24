@@ -15,7 +15,7 @@ public partial class SupplierProfile
     public string PreferredLanguage { get; set; } = "ar";
     public string? OtpCode { get; set; }
     public DateTime? OtpExpiresAt { get; set; }
-
+    public bool IsPhoneVerified { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
     // ========== بيانات النشاط ==========

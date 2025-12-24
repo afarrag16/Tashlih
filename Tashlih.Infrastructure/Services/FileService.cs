@@ -1,24 +1,25 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Tashlih.Application.Interfaces;
 
-
-
 namespace Tashlih.Infrastructure.Services
 {
     public class FileService : IFileService
     {
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private readonly string[] _allowedImageExtensions = { ".jpg", ".jpeg", ".png", ".pdf" };
         private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
-        public FileService(IWebHostEnvironment environment)
+        public FileService(IWebHostEnvironment environment, IConfiguration configuration)
         {
             _environment = environment;
+            _configuration = configuration;
         }
 
         public async Task<string> UploadFileAsync(IFormFile file, string folder)
@@ -53,8 +54,9 @@ namespace Tashlih.Infrastructure.Services
                 await file.CopyToAsync(stream);
             }
 
-            // إرجاع الـ URL النسبي
-            return $"/uploads/{folder}/{uniqueFileName}";
+            // إرجاع الـ Full URL
+            var baseUrl = _configuration["AppSettings:BaseUrl"]?.TrimEnd('/') ?? "";
+            return $"{baseUrl}/uploads/{folder}/{uniqueFileName}";
         }
 
         public async Task<bool> DeleteFileAsync(string fileUrl)
@@ -64,8 +66,10 @@ namespace Tashlih.Infrastructure.Services
 
             try
             {
-                // تحويل الـ URL إلى مسار فعلي
-                var relativePath = fileUrl.TrimStart('/');
+                // إزالة الـ Base URL لو موجود
+                var baseUrl = _configuration["AppSettings:BaseUrl"]?.TrimEnd('/') ?? "";
+                var relativePath = fileUrl.Replace(baseUrl, "").TrimStart('/');
+
                 var fullPath = Path.Combine(_environment.WebRootPath ?? _environment.ContentRootPath, relativePath);
 
                 if (File.Exists(fullPath))

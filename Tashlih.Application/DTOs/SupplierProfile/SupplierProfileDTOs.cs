@@ -42,6 +42,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
 
         [StringLength(2)]
         public string? PreferredLanguage { get; set; }
+        
     }
 
     /// <summary>
@@ -147,6 +148,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public string? FullName { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }
+        public string? LogoUrl { get; set; }
         public string? BusinessNameAr { get; set; }
         public string? BusinessNameEn { get; set; }
         public string? BusinessType { get; set; }
@@ -169,6 +171,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public DateTime? CreatedAt { get; set; }
         
         public int PartsCount { get; set; }
+        public bool IsPhoneVerified { get; set; }
     }
 
     /// <summary>

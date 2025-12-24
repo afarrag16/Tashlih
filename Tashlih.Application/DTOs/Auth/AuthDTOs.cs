@@ -14,7 +14,8 @@ namespace Tashlih.Application.DTOs.Auth
         public string? Token { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public UserDto? User { get; set; }
-     
+        public string? OtpCode { get; set; }  // ✅ أضف هنا
+
     }
 
   
@@ -47,11 +48,11 @@ namespace Tashlih.Application.DTOs.Auth
         [StringLength(100, MinimumLength = 2, ErrorMessage = "الاسم يجب أن يكون بين 2 و 100 حرف")]
         public string FullName { get; set; } = null!;
 
-        [Required(ErrorMessage = "رقم الجوال مطلوب")]
-        [RegularExpression(@"^05\d{8}$", ErrorMessage = "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام")]
-        public string Phone { get; set; } = null!;
+    [Required(ErrorMessage = "رقم الجوال مطلوب")]
+    [RegularExpression(@"^\+\d{10,15}$", ErrorMessage = "رقم الجوال يجب أن يبدأ بمفتاح الدولة مثل +966 ويتكون من 10-15 رقم")]
+    public string Phone { get; set; } = null!;
 
-        [EmailAddress(ErrorMessage = "البريد الإلكتروني غير صحيح")]
+    [EmailAddress(ErrorMessage = "البريد الإلكتروني غير صحيح")]
         public string? Email { get; set; }
 
         [Required(ErrorMessage = "كلمة المرور مطلوبة")]
@@ -71,11 +72,11 @@ namespace Tashlih.Application.DTOs.Auth
         [StringLength(100, MinimumLength = 2, ErrorMessage = "الاسم يجب أن يكون بين 2 و 100 حرف")]
         public string FullName { get; set; } = null!;
 
-        [Required(ErrorMessage = "رقم الجوال مطلوب")]
-        [RegularExpression(@"^05\d{8}$", ErrorMessage = "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام")]
-        public string Phone { get; set; } = null!;
+       [Required(ErrorMessage = "رقم الجوال مطلوب")]
+       [RegularExpression(@"^\+\d{10,15}$", ErrorMessage = "رقم الجوال يجب أن يبدأ بمفتاح الدولة مثل +966 ويتكون من 10-15 رقم")]
+       public string Phone { get; set; } = null!;
 
-        [EmailAddress(ErrorMessage = "البريد الإلكتروني غير صحيح")]
+    [EmailAddress(ErrorMessage = "البريد الإلكتروني غير صحيح")]
         public string? Email { get; set; }
 
         [Required(ErrorMessage = "كلمة المرور مطلوبة")]

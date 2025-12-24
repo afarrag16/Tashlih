@@ -598,6 +598,7 @@ namespace Tashlih.Infrastructure.Services
                 FullName = profile.FullName,
                 Phone = profile.Phone,
                 Email = profile.Email,
+                LogoUrl = profile.LogoUrl,
                 BusinessNameAr = profile.BusinessNameAr,
                 BusinessNameEn = profile.BusinessNameEn,
                 BusinessType = profile.BusinessType,
@@ -619,7 +620,8 @@ namespace Tashlih.Infrastructure.Services
                 PreferredLanguage = profile.PreferredLanguage,
                 CreatedAt = profile.CreatedAt,
                
-                PartsCount = partsCount
+                PartsCount = partsCount,
+                 IsPhoneVerified = profile.IsPhoneVerified
             };
         }
     }

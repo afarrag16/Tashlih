@@ -76,7 +76,24 @@ namespace Tashlih.Infrastructure.Services
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return await CreateCustomerAuthResponseAsync(user, request.DeviceType, request.DeviceName, request.FcmToken);
+            // إرسال OTP للتحقق
+            var otp = GenerateOtp();
+            user.OtpCode = otp;
+            user.OtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
+            user.IsPhoneVerified = false;
+            await _context.SaveChangesAsync();
+
+#if DEBUG
+            Console.WriteLine($"[OTP] Phone: {user.Phone} | OTP: {otp}");
+#endif
+
+            return new AuthResponse
+            {
+                Success = true,
+                Message = "Registration successful. Please verify your phone",
+                MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال",
+                OtpCode = otp  // للتجربة
+            };
         }
 
         public async Task<AuthResponse> RegisterSupplierAsync(SupplierRegisterRequest request)
@@ -179,7 +196,24 @@ namespace Tashlih.Infrastructure.Services
                 _context.SupplierProfiles.Add(supplier);
                 await _context.SaveChangesAsync();
 
-                return await CreateSupplierAuthResponseAsync(supplier, request.DeviceType, request.DeviceName, request.FcmToken);
+                // إرسال OTP للتحقق
+                var otp = GenerateOtp();
+                supplier.OtpCode = otp;
+                supplier.OtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
+                supplier.IsPhoneVerified = false;
+                await _context.SaveChangesAsync();
+
+#if DEBUG
+                Console.WriteLine($"[OTP] Phone: {supplier.Phone} | OTP: {otp}");
+#endif
+
+                return new AuthResponse
+                {
+                    Success = true,
+                    Message = "Registration successful. Please verify your phone",
+                    MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال",
+                    OtpCode = otp  // للتجربة
+                };
             }
             catch (ArgumentException ex)
             {
@@ -221,6 +255,15 @@ namespace Tashlih.Infrastructure.Services
                         MessageAr = "الحساب محظور"
                     };
                 }
+                if (!customer.IsPhoneVerified)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Phone not verified. Please verify your phone first",
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                    };
+                }
 
                 customer.LastLoginAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -252,6 +295,15 @@ namespace Tashlih.Infrastructure.Services
                         Success = false,
                         Message = "Account is blocked",
                         MessageAr = "الحساب محظور"
+                    };
+                }
+                if (!supplier.IsPhoneVerified)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Phone not verified. Please verify your phone first",
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
                     };
                 }
 
@@ -491,7 +543,8 @@ namespace Tashlih.Infrastructure.Services
             {
                 Success = true,
                 Message = "OTP sent successfully",
-                MessageAr = "تم إرسال رمز التحقق"
+                MessageAr = "تم إرسال رمز التحقق",
+                OtpCode = otp  // للتجربة
             };
         }
 
@@ -519,14 +572,10 @@ namespace Tashlih.Infrastructure.Services
             {
                 user.OtpCode = null;
                 user.OtpExpiresAt = null;
+                user.IsPhoneVerified = true;
                 await _context.SaveChangesAsync();
 
-                return new AuthResponse
-                {
-                    Success = true,
-                    Message = "OTP verified successfully",
-                    MessageAr = "تم التحقق بنجاح"
-                };
+                return await CreateCustomerAuthResponseAsync(user, null, null, null);
             }
 
             var supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
@@ -539,13 +588,14 @@ namespace Tashlih.Infrastructure.Services
             {
                 supplier.OtpCode = null;
                 supplier.OtpExpiresAt = null;
+                supplier.IsPhoneVerified = true;
                 await _context.SaveChangesAsync();
 
                 return new AuthResponse
                 {
                     Success = true,
-                    Message = "OTP verified successfully",
-                    MessageAr = "تم التحقق بنجاح"
+                    Message = "Phone verified. Waiting for admin approval",
+                    MessageAr = "تم تأكيد رقم الجوال. في انتظار موافقة الإدارة"
                 };
             }
 
@@ -583,6 +633,16 @@ namespace Tashlih.Infrastructure.Services
                 user.OtpExpiresAt = null;
                 await _context.SaveChangesAsync();
 
+                if (!user.IsPhoneVerified)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Phone not verified. Please verify your phone first",
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                    };
+                }
+
                 return await CreateCustomerAuthResponseAsync(
                     user,
                     request.DeviceType,
@@ -602,6 +662,16 @@ namespace Tashlih.Infrastructure.Services
                 supplier.OtpCode = null;
                 supplier.OtpExpiresAt = null;
                 await _context.SaveChangesAsync();
+
+                if (!supplier.IsPhoneVerified)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Phone not verified. Please verify your phone first",
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                    };
+                }
 
                 return await CreateSupplierAuthResponseAsync(
                     supplier,

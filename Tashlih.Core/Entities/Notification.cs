@@ -18,6 +18,7 @@ public partial class Notification
     public string? ImageUrl { get; set; }
 
     public string? Data { get; set; }
+    public string UserType { get; set; } = "customer";
 
     public string Priority { get; set; } = null!;
 

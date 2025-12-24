@@ -21,7 +21,7 @@ public partial class User
     public string UserType { get; set; } = null!;
 
     public string Status { get; set; } = null!;
-
+    public bool IsPhoneVerified { get; set; }
     public string PreferredLanguage { get; set; } = null!;
 
     public bool NotificationsEnabled { get; set; }

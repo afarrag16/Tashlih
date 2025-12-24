@@ -58,6 +58,7 @@ namespace Tashlih.Infrastructure.Services
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, supplier.Id.ToString()),
+                new Claim("supplier_id", supplier.Id.ToString()),
                 new Claim(ClaimTypes.Name, supplier.FullName ?? supplier.BusinessNameAr),
                 new Claim(ClaimTypes.MobilePhone, supplier.Phone ?? ""),
                 new Claim(ClaimTypes.Role, "supplier"),

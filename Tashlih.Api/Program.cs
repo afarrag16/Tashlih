@@ -135,6 +135,10 @@ namespace Tashlih.Api
             builder.Services.AddScoped<ISupplierProfileService, SupplierProfileService>();
             builder.Services.AddScoped<IJwtService, JwtService>();
             builder.Services.AddScoped<IOtpService, OtpService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IFirebasePushService, FirebasePushService>();
+
 
             #endregion
 
@@ -160,6 +164,7 @@ namespace Tashlih.Api
             // SignalR
             builder.Services.AddSignalR();
             builder.Services.AddScoped<IChatHubService, ChatHubService>();
+            builder.Services.AddScoped<IOrderHubService, OrderHubService>();
             var app = builder.Build();
             app.UseCors("AllowAll");  // CORS 
 
@@ -167,7 +172,7 @@ namespace Tashlih.Api
             app.UseSwaggerUI();
 
             //app.UseHttpsRedirection();
-
+            app.UseStaticFiles();
             app.UseAuthentication();
             app.UseAuthorization();
 

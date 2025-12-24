@@ -16,6 +16,7 @@ public class CustomerProfileDto
     public bool NotificationsEnabled { get; set; }
     public CustomerAddressDto? Address { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public bool IsPhoneVerified { get; set; }
 }
 
 /// <summary>

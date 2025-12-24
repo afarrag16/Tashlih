@@ -11,7 +11,7 @@ public partial class Order
 
     public long CustomerId { get; set; }
 
-    public long ShopId { get; set; }
+    
 
     public long SupplierId { get; set; }
 

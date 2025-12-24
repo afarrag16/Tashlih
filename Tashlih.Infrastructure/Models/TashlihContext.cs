@@ -301,7 +301,7 @@ public partial class TashlihContext : DbContext
             entity.HasIndex(e => new { e.UserId, e.IsRead }, "idx_notifications_read");
 
             entity.HasIndex(e => e.UserId, "idx_notifications_user");
-
+            entity.Property(n => n.UserType).HasColumnName("user_type");
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.CreatedAt)
@@ -322,6 +322,7 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(200)
                 .HasColumnName("title");
+
             entity.Property(e => e.Type)
                 .HasMaxLength(50)
                 .HasColumnName("type");
@@ -373,7 +374,7 @@ public partial class TashlihContext : DbContext
                 .HasColumnName("order_number");
             entity.Property(e => e.ProcessingAt).HasColumnName("processing_at");
             entity.Property(e => e.ReadyAt).HasColumnName("ready_at");
-            entity.Property(e => e.ShopId).HasColumnName("shop_id");
+           
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("pending")
@@ -937,6 +938,9 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("district");
             entity.Property(e => e.IsVerified).HasColumnName("is_verified");
+            entity.Property(e => e.IsPhoneVerified)
+                  .HasColumnName("is_phone_verified")
+                  .HasDefaultValue(false);
             entity.Property(e => e.LicenseNumber)
                 .HasMaxLength(50)
                 .HasColumnName("license_number");
@@ -1054,6 +1058,9 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(100)
                 .HasDefaultValue("active")
                 .HasColumnName("status");
+            entity.Property(e => e.IsPhoneVerified)
+                  .HasColumnName("is_phone_verified")
+                  .HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnName("updated_at");
