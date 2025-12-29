@@ -179,9 +179,11 @@ namespace Tashlih.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> SearchParts([FromQuery] SearchPartsRequest request)
         {
-            var result = await _partsService.SearchPartsAsync(request);
+            var result = await _partsService.SearchWithFiltersAsync(request);
             return Ok(result);
         }
+
+       
 
         /// <summary>
         /// عرض قطع حسب التصنيف

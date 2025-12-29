@@ -1,4 +1,8 @@
-﻿namespace Tashlih.Application.DTOs.Suppliers;
+﻿
+using Tashlih.Application.DTOs.Parts;
+using Tashlih.Application.DTOs.Reviews;
+
+namespace Tashlih.Application.DTOs.Suppliers;
 
 #region Response DTOs
 
@@ -26,6 +30,10 @@ public class SupplierDetailsDto
     public int CompletedOrders { get; set; }
     public int PartsCount { get; set; }
     public DateTime? CreatedAt { get; set; }
+    
+    public List<PartDto>? Parts { get; set; }
+    public RatingBreakdownDto? RatingBreakdown { get; set; }
+    public List<ReviewDto>? Reviews { get; set; }
 }
 
 /// <summary>
@@ -113,6 +121,50 @@ public class PaginationInfo
     public int TotalPages { get; set; }
     public bool HasNext { get; set; }
     public bool HasPrevious { get; set; }
+}
+
+
+/// <summary>
+/// استجابة إحصائيات المورد
+/// </summary>
+public class SupplierStatisticsResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? MessageAr { get; set; }
+    public SupplierStatisticsDto? Statistics { get; set; }
+}
+
+/// <summary>
+/// إحصائيات المورد
+/// </summary>
+public class SupplierStatisticsDto
+{
+    public OrdersStatisticsDto? Orders { get; set; }
+    public List<TopSellingPartDto>? TopSellingParts { get; set; }
+}
+
+/// <summary>
+/// إحصائيات الطلبات
+/// </summary>
+public class OrdersStatisticsDto
+{
+    public int New { get; set; }        // pending
+    public int Completed { get; set; }  // received
+    public int Cancelled { get; set; }  // cancelled + rejected
+}
+
+/// <summary>
+/// القطع الأكثر مبيعاً
+/// </summary>
+public class TopSellingPartDto
+{
+    public long Id { get; set; }
+    public string? Name { get; set; }
+    public string? Image { get; set; }
+    public decimal Price { get; set; }
+    public string? Currency { get; set; }
+    public int SalesCount { get; set; }
 }
 
 #endregion

@@ -125,6 +125,7 @@ namespace Tashlih.Api
 
             //builder.Services.AddDbContext<TashlihContext>(options =>
             //    options.UseSqlServer(connectionString));
+
             builder.Services.AddScoped<IFileService, FileService>();
             builder.Services.AddScoped<IPartsService, PartsService>();
             builder.Services.AddScoped<ILookupsService, LookupsService>();
@@ -138,6 +139,8 @@ namespace Tashlih.Api
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IFirebasePushService, FirebasePushService>();
+            builder.Services.AddScoped<IReviewsService, ReviewsService>();
+            builder.Services.AddScoped<IFavoritesService, FavoritesService>();
 
 
             #endregion

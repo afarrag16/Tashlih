@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Tashlih.Application.DTOs.Notification;
 using Tashlih.Application.DTOs.Order;
 using Tashlih.Application.Interfaces;
@@ -12,12 +13,14 @@ public class OrderService : IOrderService
     private readonly TashlihContext _context;
     private readonly IOrderHubService _orderHubService;
     private readonly INotificationService _notificationService;
+    private readonly string _baseUrl;
 
-    public OrderService(TashlihContext context, IOrderHubService orderHubService, INotificationService notificationService)
+    public OrderService(TashlihContext context, IOrderHubService orderHubService, INotificationService notificationService, IConfiguration configuration)
     {
         _context = context;
         _orderHubService = orderHubService;
         _notificationService = notificationService;
+        _baseUrl = configuration["AppSettings:BaseUrl"] ?? "";
     }
 
     #region Customer Methods
@@ -187,9 +190,9 @@ public class OrderService : IOrderService
             OrderNumber = o.OrderNumber,
             OtherPartyId = o.SupplierId,
             OtherPartyName = o.Supplier?.BusinessNameAr,
-            OtherPartyImage = o.Supplier?.LogoUrl,
+            OtherPartyImage = GetFullUrl(o.Supplier?.LogoUrl),  // ✅
             PartName = o.OrderItems.FirstOrDefault()?.PartNameSnapshot,
-            PartImage = o.OrderItems.FirstOrDefault()?.ImageUrlSnapshot,
+            PartImage = GetFullUrl(o.OrderItems.FirstOrDefault()?.ImageUrlSnapshot),  // ✅
             Quantity = o.OrderItems.FirstOrDefault()?.Quantity ?? 0,
             TotalAmount = o.TotalAmount,
             Currency = o.Currency,
@@ -406,9 +409,9 @@ public class OrderService : IOrderService
             OrderNumber = o.OrderNumber,
             OtherPartyId = o.CustomerId,
             OtherPartyName = o.Customer?.FullName,
-            OtherPartyImage = o.Customer?.AvatarUrl,
+            OtherPartyImage = GetFullUrl(o.Customer?.AvatarUrl),  // ✅
             PartName = o.OrderItems.FirstOrDefault()?.PartNameSnapshot,
-            PartImage = o.OrderItems.FirstOrDefault()?.ImageUrlSnapshot,
+            PartImage = GetFullUrl(o.OrderItems.FirstOrDefault()?.ImageUrlSnapshot),  // ✅
             Quantity = o.OrderItems.FirstOrDefault()?.Quantity ?? 0,
             TotalAmount = o.TotalAmount,
             Currency = o.Currency,
@@ -610,6 +613,13 @@ public class OrderService : IOrderService
         return $"ORD-{timestamp}-{random}";
     }
 
+    private string? GetFullUrl(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return null;
+        if (path.StartsWith("http")) return path;
+        return _baseUrl + path;
+    }
+
     /// <summary>
     /// تحويل الطلب إلى DTO
     /// </summary>
@@ -622,11 +632,11 @@ public class OrderService : IOrderService
             CustomerId = order.CustomerId,
             CustomerName = customer?.FullName,
             CustomerPhone = customer?.Phone,
-            CustomerAvatar = customer?.AvatarUrl,
+            CustomerAvatar = GetFullUrl(customer?.AvatarUrl),  // ✅
             SupplierId = order.SupplierId,
             SupplierName = supplier?.BusinessNameAr,
             SupplierPhone = supplier?.Phone,
-            SupplierLogo = supplier?.LogoUrl,
+            SupplierLogo = GetFullUrl(supplier?.LogoUrl),  // ✅
             Subtotal = order.Subtotal,
             DiscountAmount = order.DiscountAmount,
             TotalAmount = order.TotalAmount,
@@ -654,7 +664,7 @@ public class OrderService : IOrderService
                 PartName = item.PartNameSnapshot,
                 PartNumber = item.PartNumberSnapshot,
                 Condition = item.ConditionSnapshot,
-                ImageUrl = item.ImageUrlSnapshot,
+                ImageUrl = GetFullUrl(item.ImageUrlSnapshot),  // ✅
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
                 TotalPrice = item.TotalPrice,

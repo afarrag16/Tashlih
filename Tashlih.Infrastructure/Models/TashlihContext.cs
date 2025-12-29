@@ -75,6 +75,8 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<VehicleSubcategory> VehicleSubcategories { get; set; }
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
+    public virtual DbSet<FavoritePart> FavoriteParts { get; set; }
+    public virtual DbSet<FavoriteSupplier> FavoriteSuppliers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -1481,6 +1483,56 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(100)
                 .HasColumnName("name_en");
             entity.Property(e => e.SortOrder).HasColumnName("sort_order");
+        });
+
+        modelBuilder.Entity<FavoritePart>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_favorite_parts");
+            entity.ToTable("favorite_parts");
+
+            entity.HasIndex(e => new { e.CustomerId, e.PartId }, "UQ_favorite_parts").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
+            entity.Property(e => e.PartId).HasColumnName("part_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Customer).WithMany()
+                .HasForeignKey(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_favorite_parts_customer");
+
+            entity.HasOne(d => d.Part).WithMany()
+                .HasForeignKey(d => d.PartId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_favorite_parts_part");
+        });
+
+        modelBuilder.Entity<FavoriteSupplier>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_favorite_suppliers");
+            entity.ToTable("favorite_suppliers");
+
+            entity.HasIndex(e => new { e.CustomerId, e.SupplierId }, "UQ_favorite_suppliers").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.Customer).WithMany()
+                .HasForeignKey(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_favorite_suppliers_customer");
+
+            entity.HasOne(d => d.Supplier).WithMany()
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_favorite_suppliers_supplier");
         });
 
         OnModelCreatingPartial(modelBuilder);

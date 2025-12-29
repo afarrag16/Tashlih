@@ -1,18 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Tashlih.Application.DTOs.Parts;
+using Tashlih.Application.DTOs.Reviews;
 using Tashlih.Application.DTOs.Suppliers;
 using Tashlih.Application.Interfaces;
-using Tashlih.Core.Entities ;
 using Tashlih.Infrastructure.Models;
+
 
 namespace Tashlih.Infrastructure.Services;
 
 public class SuppliersService : ISuppliersService
 {
     private readonly TashlihContext _context;
+    private readonly string _baseUrl;
 
-    public SuppliersService(TashlihContext context)
+    public SuppliersService(TashlihContext context, IConfiguration configuration)
     {
         _context = context;
+        _baseUrl = configuration["AppSettings:BaseUrl"] ?? "";
     }
 
     /// <summary>
@@ -36,9 +41,111 @@ public class SuppliersService : ISuppliersService
             };
         }
 
-        var partsCount = await _context.Parts
-            .CountAsync(p => p.SupplierId == supplierId && p.DeletedAt == null && p.Status == "available");
+        // ✅ جلب القطع مع كل التفاصيل
+        var parts = await _context.Parts
+            .Where(p => p.SupplierId == supplierId && p.DeletedAt == null && p.Status == "available")
+            .Include(p => p.PartImages)
+            .Include(p => p.Category)
+            .Include(p => p.VehicleType)
+            .Include(p => p.VehicleSubcategory)
+            .Include(p => p.Make)
+            .Include(p => p.Model)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
 
+        var partsDto = parts.Select(p => new PartDto
+        {
+            Id = p.Id,
+            SupplierId = p.SupplierId,
+            SupplierName = supplier.BusinessNameAr,
+            City = supplier.City,
+            NameAr = p.NameAr,
+            NameEn = p.NameEn,
+            Description = p.Description,
+            PartNumber = p.PartNumber,
+            OemNumber = p.OemNumber,
+            VinNumber = p.VinNumber,
+            Condition = p.Condition,
+            ConditionDetails = p.ConditionDetails,
+            WarrantyType = p.WarrantyType,
+            WarrantyDays = p.WarrantyDays,
+            Price = p.Price,
+            OriginalPrice = p.OriginalPrice,
+            Currency = p.Currency,
+            Quantity = p.Quantity,
+            Status = p.Status,
+            IsAvailable = p.Status == "available" && p.Quantity > 0,
+            CategoryId = p.CategoryId,
+            CategoryNameAr = p.Category?.NameAr,
+            CustomCategory = p.CustomCategory,
+            VehicleTypeId = p.VehicleTypeId,
+            VehicleTypeNameAr = p.VehicleType?.NameAr,
+            CustomVehicleType = p.CustomVehicleType,
+            VehicleSubcategoryId = p.VehicleSubcategoryId,
+            SubcategoryNameAr = p.VehicleSubcategory?.NameAr,
+            CustomSubcategory = p.CustomSubcategory,
+            MakeId = p.MakeId,
+            MakeNameAr = p.Make?.NameAr,
+            MakeLogoUrl = p.Make?.LogoUrl,
+            CustomMake = p.CustomMake,
+            ModelId = p.ModelId,
+            ModelNameAr = p.Model?.NameAr,
+            CustomModel = p.CustomModel,
+            YearFrom = p.YearFrom,
+            YearTo = p.YearTo,
+            DeliveryAvailable = p.DeliveryAvailable,
+            DeliveryByShop = p.DeliveryByShop,
+            DeliveryNotes = p.DeliveryNotes,
+            ViewsCount = p.ViewsCount,
+            SalesCount = p.SalesCount,
+            FavoritesCount = p.FavoritesCount,
+            PrimaryImageUrl = p.PartImages.FirstOrDefault(i => i.IsPrimary)?.ImageUrl
+                              ?? p.PartImages.FirstOrDefault()?.ImageUrl,
+            Images = p.PartImages.Select(i => new PartImageDto
+            {
+                Id = i.Id,
+                ImageUrl = i.ImageUrl,
+                ThumbnailUrl = i.ThumbnailUrl,
+                IsPrimary = i.IsPrimary,
+                DisplayOrder = i.DisplayOrder
+            }).ToList(),
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt
+        }).ToList();
+
+        // ✅ جلب التقييمات
+        var reviews = await _context.Reviews
+            .Where(r => r.SupplierId == supplierId && r.IsVisible)
+            .Include(r => r.Customer)
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+
+        var reviewsDto = reviews.Select(r => new ReviewDto
+        {
+            Id = r.Id,
+            OrderId = r.OrderId,
+            CustomerId = r.CustomerId,
+            CustomerName = r.Customer?.FullName,
+            CustomerAvatar = r.Customer?.AvatarUrl,
+            Rating = r.OverallRating,
+            Comment = r.Comment,
+            CreatedAt = r.CreatedAt
+        }).ToList();
+
+        // حساب توزيع التقييمات
+        var allReviews = await _context.Reviews
+            .Where(r => r.SupplierId == supplierId && r.IsVisible)
+            .ToListAsync();
+
+        var ratingBreakdown = new RatingBreakdownDto
+        {
+            Five = allReviews.Count(r => r.OverallRating == 5),
+            Four = allReviews.Count(r => r.OverallRating == 4),
+            Three = allReviews.Count(r => r.OverallRating == 3),
+            Two = allReviews.Count(r => r.OverallRating == 2),
+            One = allReviews.Count(r => r.OverallRating == 1)
+        };
         return new SupplierDetailsResponse
         {
             Success = true,
@@ -61,8 +168,11 @@ public class SuppliersService : ISuppliersService
                 RatingCount = supplier.RatingCount,
                 TotalOrders = supplier.TotalOrders,
                 CompletedOrders = supplier.CompletedOrders,
-                PartsCount = partsCount,
-                CreatedAt = supplier.CreatedAt
+                PartsCount = parts.Count,
+                CreatedAt = supplier.CreatedAt,
+                Parts = partsDto,
+                RatingBreakdown = ratingBreakdown,
+                Reviews = reviewsDto
             }
         };
     }
@@ -117,7 +227,7 @@ public class SuppliersService : ISuppliersService
         {
             Success = true,
             Suppliers = suppliersDto,
-            Pagination = new PaginationInfo
+            Pagination = new Tashlih.Application.DTOs.Suppliers.PaginationInfo
             {
                 CurrentPage = page,
                 PageSize = pageSize,
@@ -181,6 +291,83 @@ public class SuppliersService : ISuppliersService
         {
             Success = true,
             Suppliers = nearbySuppliers
+        };
+    }
+
+    /// <summary>
+    /// جلب إحصائيات المورد
+    /// </summary>
+    public async Task<SupplierStatisticsResponse> GetSupplierStatisticsAsync(
+        long supplierId,
+        string? period = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null)
+    {
+        // تحديد الفترة الزمنية
+        DateTime? startDate = null;
+        DateTime? endDate = null;
+
+        if (fromDate.HasValue)
+        {
+            // فترة محددة من-إلى
+            startDate = fromDate.Value.Date;
+            endDate = toDate?.Date.AddDays(1) ?? DateTime.UtcNow;
+        }
+        else if (!string.IsNullOrEmpty(period))
+        {
+            endDate = DateTime.UtcNow;
+            startDate = period.ToLower() switch
+            {
+                "today" => DateTime.UtcNow.Date,
+                "week" => DateTime.UtcNow.Date.AddDays(-7),
+                "month" => DateTime.UtcNow.Date.AddMonths(-1),
+                _ => null
+            };
+        }
+
+        // === إحصائيات الطلبات ===
+        var ordersQuery = _context.Orders.Where(o => o.SupplierId == supplierId);
+
+        if (startDate.HasValue)
+            ordersQuery = ordersQuery.Where(o => o.CreatedAt >= startDate);
+
+        if (endDate.HasValue)
+            ordersQuery = ordersQuery.Where(o => o.CreatedAt <= endDate);
+
+        var ordersStats = new OrdersStatisticsDto
+        {
+            New = await ordersQuery.CountAsync(o => o.Status == "pending"),
+            Completed = await ordersQuery.CountAsync(o => o.Status == "received"),
+            Cancelled = await ordersQuery.CountAsync(o => o.Status == "cancelled" || o.Status == "rejected")
+        };
+
+        // === القطع الأكثر مبيعاً ===
+        var topSellingParts = await _context.Parts
+            .Where(p => p.SupplierId == supplierId && p.DeletedAt == null && p.SalesCount > 0)
+            .Include(p => p.PartImages.Where(i => i.IsPrimary))
+            .OrderByDescending(p => p.SalesCount)
+            .Take(10)
+            .Select(p => new TopSellingPartDto
+            {
+                Id = p.Id,
+                Name = p.NameAr,
+                Image = p.PartImages.FirstOrDefault() != null
+                    ? _baseUrl + p.PartImages.FirstOrDefault()!.ImageUrl
+                    : null,
+                Price = p.Price,
+                Currency = p.Currency ?? "SAR",
+                SalesCount = p.SalesCount
+            })
+            .ToListAsync();
+
+        return new SupplierStatisticsResponse
+        {
+            Success = true,
+            Statistics = new SupplierStatisticsDto
+            {
+                Orders = ordersStats,
+                TopSellingParts = topSellingParts
+            }
         };
     }
 

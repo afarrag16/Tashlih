@@ -362,4 +362,52 @@ namespace Tashlih.Application.DTOs.Parts
         public bool DeliveryAvailable { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
+
+    /// <summary>
+    /// استجابة البحث مع الفلاتر الذكية
+    /// </summary>
+    public class SearchPartsResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? MessageAr { get; set; }
+        public List<PartDto>? Parts { get; set; }
+        public PaginationInfo? Pagination { get; set; }
+        public AvailableFiltersDto? AvailableFilters { get; set; }
+    }
+
+    /// <summary>
+    /// الفلاتر المتاحة
+    /// </summary>
+    public class AvailableFiltersDto
+    {
+        public List<FilterItemDto>? Categories { get; set; }
+        public List<FilterItemDto>? Subcategories { get; set; }
+        public List<FilterItemDto>? VehicleTypes { get; set; }
+        public List<FilterItemDto>? Makes { get; set; }
+        public List<FilterItemDto>? Models { get; set; }
+        public List<FilterItemDto>? Years { get; set; }
+        public List<FilterItemDto>? Conditions { get; set; }
+        public PriceRangeDto? PriceRange { get; set; }
+    }
+
+    /// <summary>
+    /// عنصر فلتر
+    /// </summary>
+    public class FilterItemDto
+    {
+        public int? Id { get; set; }
+        public string? Value { get; set; }
+        public string? Name { get; set; }
+        public int Count { get; set; }
+    }
+
+    /// <summary>
+    /// نطاق السعر
+    /// </summary>
+    public class PriceRangeDto
+    {
+        public decimal Min { get; set; }
+        public decimal Max { get; set; }
+    }
 }

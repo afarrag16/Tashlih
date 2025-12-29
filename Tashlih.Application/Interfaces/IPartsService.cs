@@ -83,5 +83,7 @@ namespace Tashlih.Application.Interfaces
         /// زيادة عداد المشاهدات
         /// </summary>
         Task IncrementViewCountAsync(long partId);
+
+        Task<SearchPartsResponse> SearchWithFiltersAsync(SearchPartsRequest request);
     }
 }

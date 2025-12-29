@@ -55,4 +55,38 @@ public class SuppliersController : ControllerBase
         var result = await _suppliersService.GetNearbySuppliersAsync(latitude, longitude, radiusKm);
         return Ok(result);
     }
+
+    /// <summary>
+    /// جلب إحصائيات المورد
+    /// </summary>
+    [HttpGet("my-statistics")]
+    [Authorize]
+    public async Task<IActionResult> GetMyStatistics(
+        [FromQuery] string? period = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        if (!IsSupplier())
+            return Forbid();
+
+        var supplierId = GetSupplierId();
+        var result = await _suppliersService.GetSupplierStatisticsAsync(supplierId, period, fromDate, toDate);
+
+        return Ok(result);
+    }
+
+
+    #region Helper Methods 
+    private long GetSupplierId()
+    {
+        var supplierIdClaim = User.FindFirst("supplier_id")?.Value;
+        return long.TryParse(supplierIdClaim, out var id) ? id : 0;
+    }
+
+    private bool IsSupplier()
+    {
+        return User.FindFirst("user_type")?.Value == "supplier";
+    }
+    #endregion
+
 }

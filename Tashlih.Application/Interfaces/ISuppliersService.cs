@@ -18,4 +18,6 @@ public interface ISuppliersService
     /// جلب الموردين القريبين
     /// </summary>
     Task<SuppliersNearbyResponse> GetNearbySuppliersAsync(decimal latitude, decimal longitude, double radiusKm = 10);
+
+    Task<SupplierStatisticsResponse> GetSupplierStatisticsAsync(long supplierId, string? period = null, DateTime? fromDate = null, DateTime? toDate = null);
 }

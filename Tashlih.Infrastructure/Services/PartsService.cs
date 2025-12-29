@@ -850,6 +850,238 @@ namespace Tashlih.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// البحث مع الفلاتر الذكية
+        /// </summary>
+        public async Task<SearchPartsResponse> SearchWithFiltersAsync(SearchPartsRequest request)
+        {
+            var query = _context.VPartsDetaileds
+                .Where(p => p.Status == "available");
+
+            // فلترة بالكلمة المفتاحية
+            if (!string.IsNullOrEmpty(request.Keyword))
+            {
+                var keyword = request.Keyword.ToLower();
+                query = query.Where(p =>
+                    p.NameAr.ToLower().Contains(keyword) ||
+                    (p.NameEn != null && p.NameEn.ToLower().Contains(keyword)) ||
+                    (p.PartNumber != null && p.PartNumber.ToLower().Contains(keyword)) ||
+                    (p.OemNumber != null && p.OemNumber.ToLower().Contains(keyword)));
+            }
+
+            // فلترة بالتصنيف
+            if (request.CategoryId.HasValue)
+                query = query.Where(p => p.CategoryId == request.CategoryId);
+
+            // فلترة بنوع المركبة
+            if (request.VehicleTypeId.HasValue)
+                query = query.Where(p => p.VehicleTypeId == request.VehicleTypeId);
+
+            // فلترة بالتصنيف الفرعي
+            if (request.VehicleSubcategoryId.HasValue)
+                query = query.Where(p => p.VehicleSubcategoryId == request.VehicleSubcategoryId);
+
+            // فلترة بالشركة
+            if (request.MakeId.HasValue)
+                query = query.Where(p => p.MakeId == request.MakeId);
+
+            // فلترة بالموديل
+            if (request.ModelId.HasValue)
+                query = query.Where(p => p.ModelId == request.ModelId);
+
+            // فلترة بالسنة
+            if (request.Year.HasValue)
+                query = query.Where(p =>
+                    (p.YearFrom == null || p.YearFrom <= request.Year) &&
+                    (p.YearTo == null || p.YearTo >= request.Year));
+
+            // فلترة بالحالة
+            if (!string.IsNullOrEmpty(request.Condition))
+                query = query.Where(p => p.Condition == request.Condition);
+
+            // فلترة بالسعر
+            if (request.MinPrice.HasValue)
+                query = query.Where(p => p.Price >= request.MinPrice);
+            if (request.MaxPrice.HasValue)
+                query = query.Where(p => p.Price <= request.MaxPrice);
+
+            // فلترة بالمدينة
+            if (!string.IsNullOrEmpty(request.City))
+                query = query.Where(p => p.SupplierCity == request.City);
+
+            // فلترة بالضمان
+            if (request.HasWarranty.HasValue && request.HasWarranty.Value)
+                query = query.Where(p => p.WarrantyType != null && p.WarrantyType != "none");
+
+            // فلترة بالتوصيل
+            if (request.DeliveryAvailable.HasValue && request.DeliveryAvailable.Value)
+                query = query.Where(p => p.DeliveryAvailable);
+
+            // === حساب الفلاتر المتاحة ===
+            var allResults = await query.ToListAsync();
+
+            var availableFilters = new AvailableFiltersDto
+            {
+                // التصنيفات
+                Categories = allResults
+                    .Where(p => p.CategoryId != null)
+                    .GroupBy(p => new { p.CategoryId, p.CategoryNameAr })
+                    .Select(g => new FilterItemDto
+                    {
+                        Id = (int?)g.Key.CategoryId,
+                        Name = g.Key.CategoryNameAr,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // التصنيفات الفرعية
+                Subcategories = allResults
+                    .Where(p => p.VehicleSubcategoryId != null)
+                    .GroupBy(p => new { p.VehicleSubcategoryId, p.SubcategoryNameAr })
+                    .Select(g => new FilterItemDto
+                    {
+                        Id = g.Key.VehicleSubcategoryId,
+                        Name = g.Key.SubcategoryNameAr,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // أنواع المركبات
+                VehicleTypes = allResults
+                    .Where(p => p.VehicleTypeId != null)
+                    .GroupBy(p => new { p.VehicleTypeId, p.VehicleTypeNameAr })
+                    .Select(g => new FilterItemDto
+                    {
+                        Id = g.Key.VehicleTypeId,
+                        Name = g.Key.VehicleTypeNameAr,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // الشركات المصنعة
+                Makes = allResults
+                    .Where(p => p.MakeId != null)
+                    .GroupBy(p => new { p.MakeId, p.MakeNameAr })
+                    .Select(g => new FilterItemDto
+                    {
+                        Id = g.Key.MakeId,
+                        Name = g.Key.MakeNameAr,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // الموديلات
+                Models = allResults
+                    .Where(p => p.ModelId != null)
+                    .GroupBy(p => new { p.ModelId, p.ModelNameAr })
+                    .Select(g => new FilterItemDto
+                    {
+                        Id = g.Key.ModelId,
+                        Name = g.Key.ModelNameAr,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // السنوات
+                Years = allResults
+                    .Where(p => p.YearFrom != null)
+                    .SelectMany(p => Enumerable.Range(p.YearFrom ?? 0, (p.YearTo ?? p.YearFrom ?? 0) - (p.YearFrom ?? 0) + 1))
+                    .GroupBy(y => y)
+                    .Select(g => new FilterItemDto
+                    {
+                        Value = g.Key.ToString(),
+                        Name = g.Key.ToString(),
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => int.Parse(f.Value ?? "0"))
+                    .Take(20)
+                    .ToList(),
+
+                // الحالات
+                Conditions = allResults
+                    .Where(p => p.Condition != null)
+                    .GroupBy(p => p.Condition)
+                    .Select(g => new FilterItemDto
+                    {
+                        Value = g.Key,
+                        Name = GetConditionAr(g.Key),
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(f => f.Count)
+                    .ToList(),
+
+                // نطاق السعر
+                PriceRange = allResults.Any() ? new PriceRangeDto
+                {
+                    Min = allResults.Min(p => p.Price),
+                    Max = allResults.Max(p => p.Price)
+                } : null
+            };
+
+            // === الترتيب ===
+            var sortedQuery = request.SortBy switch
+            {
+                "price_asc" => allResults.OrderBy(p => p.Price),
+                "price_desc" => allResults.OrderByDescending(p => p.Price),
+                "popular" => allResults.OrderByDescending(p => p.ViewsCount),
+                "newest" => allResults.OrderByDescending(p => p.CreatedAt),
+                _ => allResults.OrderByDescending(p => p.CreatedAt)
+            };
+
+            // === الصفحات ===
+            var totalItems = allResults.Count;
+            var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
+
+            var parts = sortedQuery
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var partIds = parts.Select(p => p.Id).ToList();
+            var allImages = await _context.PartImages
+                .Where(i => partIds.Contains(i.PartId))
+                .OrderBy(i => i.DisplayOrder)
+                .ToListAsync();
+
+            var partsDto = parts.Select(p =>
+            {
+                var images = allImages.Where(i => i.PartId == p.Id).ToList();
+                return MapViewToDto(p, images);
+            }).ToList();
+
+            return new SearchPartsResponse
+            {
+                Success = true,
+                Parts = partsDto,
+                Pagination = new PaginationInfo
+                {
+                    CurrentPage = request.Page,
+                    PageSize = request.PageSize,
+                    TotalItems = totalItems,
+                    TotalPages = totalPages,
+                    HasNext = request.Page < totalPages,
+                    HasPrevious = request.Page > 1
+                },
+                AvailableFilters = availableFilters
+            };
+        }
+
+        private string GetConditionAr(string? condition)
+        {
+            return condition?.ToLower() switch
+            {
+                "new" => "جديد",
+                "used" => "مستعمل",
+                "refurbished" => "مجدد",
+                _ => condition ?? ""
+            };
+        }
+
         #endregion
 
         #region Helper Methods
@@ -941,16 +1173,7 @@ namespace Tashlih.Infrastructure.Services
             };
         }
 
-        private string? GetConditionAr(string condition)
-        {
-            return condition switch
-            {
-                "new" => "جديد",
-                "used" => "مستعمل",
-                "refurbished" => "مجدد",
-                _ => condition
-            };
-        }
+       
 
         private string? GetWarrantyTypeAr(string? warrantyType)
         {
