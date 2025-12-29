@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using System;
 using System.Text;
 using System.Text.Json.Serialization;
+using Tashlih.Api.BackgroundServices;
 using Tashlih.Api.Hubs;
 using Tashlih.Api.Services;
 using Tashlih.Application.Interfaces;
@@ -141,7 +142,10 @@ namespace Tashlih.Api
             builder.Services.AddScoped<IFirebasePushService, FirebasePushService>();
             builder.Services.AddScoped<IReviewsService, ReviewsService>();
             builder.Services.AddScoped<IFavoritesService, FavoritesService>();
-
+            builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+            builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
+            builder.Services.AddScoped<SubscriptionNotificationService>();
+            builder.Services.AddHostedService<SubscriptionExpirationJob>();
 
             #endregion
 

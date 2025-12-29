@@ -31,7 +31,6 @@ namespace Tashlih.Infrastructure.Services
             // التحقق من وجود المورد وأنه موثق
             var supplier = await _context.SupplierProfiles
                 .FirstOrDefaultAsync(s => s.Id == supplierId && s.IsVerified && s.Status == "active");
-
             if (supplier == null)
             {
                 return new PartResponse
@@ -39,6 +38,49 @@ namespace Tashlih.Infrastructure.Services
                     Success = false,
                     Message = "Supplier not found or not verified",
                     MessageAr = "المورد غير موجود أو غير موثق"
+                };
+            }
+
+            // ✅ التحقق من الاشتراك وحدود الباقة
+            var subscription = await _context.Subscriptions
+                .Include(s => s.Plan)
+                .FirstOrDefaultAsync(s => s.SupplierId == supplierId && s.Status == "active");
+
+            if (subscription == null)
+            {
+                return new PartResponse
+                {
+                    Success = false,
+                    Message = "No active subscription. Please subscribe to a plan first",
+                    MessageAr = "لا يوجد اشتراك فعال. يرجى الاشتراك في باقة أولاً"
+                };
+            }
+
+            // التحقق من عدد القطع
+            var currentPartsCount = await _context.Parts
+                .CountAsync(p => p.SupplierId == supplierId && p.DeletedAt == null);
+
+            var maxParts = subscription.Plan.MaxParts;
+
+            if (maxParts.HasValue && currentPartsCount >= maxParts.Value)
+            {
+                return new PartResponse
+                {
+                    Success = false,
+                    Message = $"You have reached the maximum limit of {maxParts} parts. Please upgrade your plan",
+                    MessageAr = $"وصلت للحد الأقصى ({maxParts} قطعة). يرجى ترقية باقتك"
+                };
+            }
+
+            // التحقق من عدد الصور
+            var maxImages = subscription.Plan.MaxImagesPerPart;
+            if (request.Images != null && request.Images.Count > maxImages)
+            {
+                return new PartResponse
+                {
+                    Success = false,
+                    Message = $"Maximum {maxImages} images allowed per part. Please upgrade your plan",
+                    MessageAr = $"الحد الأقصى {maxImages} صور لكل قطعة. يرجى ترقية باقتك"
                 };
             }
 
@@ -111,7 +153,6 @@ namespace Tashlih.Infrastructure.Services
             // جلب القطعة من الـ View
             var partView = await _context.VPartsDetaileds
                 .FirstOrDefaultAsync(p => p.Id == part.Id);
-
             var images = await _context.PartImages
                 .Where(i => i.PartId == part.Id)
                 .OrderBy(i => i.DisplayOrder)
@@ -555,8 +596,15 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> SearchPartsAsync(SearchPartsRequest request)
         {
+            // ✅ جلب الموردين اللي عندهم اشتراك فعال
+            var activeSupplierIds = await _context.Subscriptions
+                .Where(s => s.Status == "active" && s.EndsAt >= DateOnly.FromDateTime(DateTime.UtcNow))
+                .Select(s => s.SupplierId)
+                .ToListAsync();
+
             var query = _context.VPartsDetaileds
-                .Where(p => p.Status == "available");
+                .Where(p => p.Status == "available")
+                .Where(p => activeSupplierIds.Contains(p.SupplierId)); // ✅ فقط القطع اللي صاحبها عنده اشتراك فعال
 
             // فلترة بالكلمة المفتاحية
             if (!string.IsNullOrEmpty(request.Keyword))

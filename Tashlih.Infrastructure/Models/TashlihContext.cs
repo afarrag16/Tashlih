@@ -77,6 +77,7 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
     public virtual DbSet<FavoritePart> FavoriteParts { get; set; }
     public virtual DbSet<FavoriteSupplier> FavoriteSuppliers { get; set; }
+    public virtual DbSet<Admin> Admins { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -896,6 +897,9 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.Price)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("price");
+            entity.Property(e => e.LogoUrl)
+                  .HasMaxLength(500)
+                  .HasColumnName("logo_url");
             entity.Property(e => e.SortOrder).HasColumnName("sort_order");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -1533,6 +1537,41 @@ public partial class TashlihContext : DbContext
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_favorite_suppliers_supplier");
+        });
+
+        modelBuilder.Entity<Admin>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_admins");
+            entity.ToTable("admins");
+
+            entity.HasIndex(e => e.Email, "UQ_admins_email").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.FullName)
+                .HasMaxLength(100)
+                .HasColumnName("full_name");
+            entity.Property(e => e.Email)
+                .HasMaxLength(100)
+                .HasColumnName("email");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .HasColumnName("phone");
+            entity.Property(e => e.PasswordHash)
+                .HasMaxLength(255)
+                .HasColumnName("password_hash");
+            entity.Property(e => e.AvatarUrl)
+                .HasMaxLength(500)
+                .HasColumnName("avatar_url");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("updated_at");
         });
 
         OnModelCreatingPartial(modelBuilder);

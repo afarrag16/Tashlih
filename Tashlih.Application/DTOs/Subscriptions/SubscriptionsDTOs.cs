@@ -33,7 +33,7 @@ public class SubscribeResponse
     public string? Message { get; set; }
     public string? MessageAr { get; set; }
     public SubscriptionDto? Subscription { get; set; }
-    public string? PaymentUrl { get; set; }  // لبوابة الدفع لاحقاً
+    public string? PaymentUrl { get; set; }
 }
 
 #endregion
@@ -47,6 +47,7 @@ public class SubscriptionPlanDto
     public string? NameEn { get; set; }
     public string? DescriptionAr { get; set; }
     public string? DescriptionEn { get; set; }
+    public string? LogoUrl { get; set; }
     public decimal Price { get; set; }
     public string? Currency { get; set; }
     public int DurationDays { get; set; }
@@ -94,7 +95,7 @@ public class SubscriptionUsageDto
 public class SubscribeRequest
 {
     public long PlanId { get; set; }
-    public string? PaymentMethod { get; set; }  // manual, moyasar, myfatoorah
+    public string? PaymentMethod { get; set; }
     public bool AutoRenew { get; set; }
 }
 
@@ -102,28 +103,42 @@ public class SubscribeRequest
 
 #region Admin DTOs
 
-public class AdminActivateSubscriptionRequest
+public class AdminCreatePlanRequest
 {
-    public long SupplierId { get; set; }
-    public long PlanId { get; set; }
-    public decimal? AmountPaid { get; set; }
-    public decimal? DiscountAmount { get; set; }
-    public string? PaymentMethod { get; set; }
-    public string? PaymentReference { get; set; }
-    public string? PaymentNotes { get; set; }
+    public string NameAr { get; set; } = null!;
+    public string? NameEn { get; set; }
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public decimal Price { get; set; }
+    public string Currency { get; set; } = "SAR";
+    public int DurationDays { get; set; } = 30;
+    public int? MaxParts { get; set; }
+    public int MaxImagesPerPart { get; set; } = 5;
+    public int MaxShops { get; set; } = 1;
+    public List<string>? Features { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsPopular { get; set; }
+    public string? BadgeText { get; set; }
+    public bool IsActive { get; set; } = true;
 }
 
-public class AdminExtendSubscriptionRequest
+public class AdminUpdatePlanRequest
 {
-    public long SubscriptionId { get; set; }
-    public int ExtraDays { get; set; }
-    public string? Notes { get; set; }
-}
-
-public class AdminCancelSubscriptionRequest
-{
-    public long SubscriptionId { get; set; }
-    public string? CancellationReason { get; set; }
+    public string? NameAr { get; set; }
+    public string? NameEn { get; set; }
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public decimal? Price { get; set; }
+    public string? Currency { get; set; }
+    public int? DurationDays { get; set; }
+    public int? MaxParts { get; set; }
+    public int? MaxImagesPerPart { get; set; }
+    public int? MaxShops { get; set; }
+    public List<string>? Features { get; set; }
+    public int? SortOrder { get; set; }
+    public bool? IsPopular { get; set; }
+    public string? BadgeText { get; set; }
+    public bool? IsActive { get; set; }
 }
 
 public class AdminSubscriptionsResponse
@@ -148,6 +163,13 @@ public class AdminSubscriptionDto
     public decimal? AmountPaid { get; set; }
     public string? PaymentMethod { get; set; }
     public DateTime? CreatedAt { get; set; }
+}
+
+public class AdminPlansResponse
+{
+    public bool Success { get; set; }
+    public List<SubscriptionPlanDto>? Plans { get; set; }
+    public int TotalCount { get; set; }
 }
 
 #endregion
