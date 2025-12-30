@@ -61,6 +61,23 @@ public class SubscriptionNotificationService
             // تحديث الحالة لـ expired
             sub.Status = "expired";
 
+            // ✅ تسجيل في سجل الاشتراكات
+            var history = new SubscriptionHistory
+            {
+                SubscriptionId = sub.Id,
+                SupplierId = sub.SupplierId,
+                Action = "expired",
+                OldStatus = "active",
+                NewStatus = "expired",
+                OldPlanId = sub.PlanId,
+                NewPlanId = null,
+                Amount = null,
+                Notes = "Subscription expired automatically",
+                PerformedBy = null,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.SubscriptionHistories.Add(history);
+
             await CreateNotification(sub.SupplierId,
                 "انتهت باقتك",
                 $"انتهت باقتك ({sub.Plan.NameAr}). قطعك مخفية الآن عن العملاء. جدد اشتراكك لإظهارها.",

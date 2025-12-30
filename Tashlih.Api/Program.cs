@@ -146,6 +146,9 @@ namespace Tashlih.Api
             builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
             builder.Services.AddScoped<SubscriptionNotificationService>();
             builder.Services.AddHostedService<SubscriptionExpirationJob>();
+            builder.Services.AddScoped<AdminSupplierService>();
+            builder.Services.AddScoped<AdminCustomerService>();
+            builder.Services.AddScoped<AdminDashboardService>();
 
             #endregion
 

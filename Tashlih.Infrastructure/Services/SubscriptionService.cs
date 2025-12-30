@@ -113,6 +113,19 @@ public class SubscriptionService : ISubscriptionService
             currentSubscription.Status = "cancelled";
             currentSubscription.CancelledAt = DateTime.UtcNow;
             currentSubscription.CancellationReason = "Upgraded to new plan";
+
+            // ✅ تسجيل إلغاء الاشتراك القديم
+            LogSubscriptionHistory(
+                subscriptionId: currentSubscription.Id,
+                supplierId: supplierId,
+                action: "cancelled",
+                oldStatus: "active",
+                newStatus: "cancelled",
+                oldPlanId: currentSubscription.PlanId,
+                newPlanId: null,
+                amount: null,
+                notes: "Upgraded to new plan"
+            );
         }
 
         // إنشاء اشتراك جديد
@@ -130,6 +143,21 @@ public class SubscriptionService : ISubscriptionService
         };
 
         _context.Subscriptions.Add(subscription);
+        await _context.SaveChangesAsync();
+
+        // ✅ تسجيل الاشتراك الجديد
+        string action = currentSubscription != null ? "upgraded" : "created";
+        LogSubscriptionHistory(
+            subscriptionId: subscription.Id,
+            supplierId: supplierId,
+            action: action,
+            oldStatus: null,
+            newStatus: subscription.Status,
+            oldPlanId: currentSubscription?.PlanId,
+            newPlanId: subscription.PlanId,
+            amount: plan.Price,
+            notes: null
+        );
         await _context.SaveChangesAsync();
 
         // لو الباقة مجانية، تتفعل مباشرة
@@ -423,6 +451,39 @@ public class SubscriptionService : ISubscriptionService
             .FirstOrDefaultAsync(s => s.SupplierId == supplierId && s.Status == "active");
 
         return subscription?.Plan.MaxImagesPerPart ?? 3; // افتراضي 3
+    }
+
+    /// <summary>
+    /// تسجيل في سجل الاشتراكات
+    /// </summary>
+    private void LogSubscriptionHistory(
+        long subscriptionId,
+        long supplierId,
+        string action,
+        string? oldStatus,
+        string? newStatus,
+        long? oldPlanId,
+        long? newPlanId,
+        decimal? amount,
+        string? notes,
+        long? performedBy = null)
+    {
+        var history = new SubscriptionHistory
+        {
+            SubscriptionId = subscriptionId,
+            SupplierId = supplierId,
+            Action = action,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            OldPlanId = oldPlanId,
+            NewPlanId = newPlanId,
+            Amount = amount,
+            Notes = notes,
+            PerformedBy = performedBy,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.SubscriptionHistories.Add(history);
     }
 
     #endregion
