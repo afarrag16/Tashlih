@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Tashlih.Application.DTOs.Auth;
 using Tashlih.Application.Interfaces;
+
 
 namespace Tashlih.Api.Controllers
 {
@@ -66,6 +68,7 @@ namespace Tashlih.Api.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpPost("login")]
+        [EnableRateLimiting("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid)
@@ -88,6 +91,7 @@ namespace Tashlih.Api.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpPost("send-otp")]
+        [EnableRateLimiting("otp")]
         public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
         {
             if (!ModelState.IsValid)

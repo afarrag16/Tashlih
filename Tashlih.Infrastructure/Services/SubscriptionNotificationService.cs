@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Tashlih.Application.Interfaces;
 using Tashlih.Core.Entities;
 using Tashlih.Infrastructure.Models;
 
@@ -7,10 +8,12 @@ namespace Tashlih.Infrastructure.Services;
 public class SubscriptionNotificationService
 {
     private readonly TashlihContext _context;
+    private readonly IFirebasePushService _firebasePushService;
 
-    public SubscriptionNotificationService(TashlihContext context)
+    public SubscriptionNotificationService(TashlihContext context, IFirebasePushService firebasePushService)
     {
         _context = context;
+        _firebasePushService = firebasePushService;
     }
 
     /// <summary>
@@ -32,7 +35,8 @@ public class SubscriptionNotificationService
             await CreateNotification(sub.SupplierId,
                 "تنبيه انتهاء الباقة",
                 $"باقتك ({sub.Plan.NameAr}) ستنتهي خلال 7 أيام. جدد الآن للحفاظ على ظهور قطعك.",
-                "subscription_expiring");
+                "subscription_expiring",
+                "normal");
         }
 
         // الاشتراكات اللي هتنتهي خلال 3 أيام
@@ -47,7 +51,8 @@ public class SubscriptionNotificationService
             await CreateNotification(sub.SupplierId,
                 "تنبيه عاجل",
                 $"باقتك ({sub.Plan.NameAr}) ستنتهي خلال 3 أيام! جدد الآن.",
-                "subscription_expiring_urgent");
+                "subscription_expiring_urgent",
+                "high");
         }
 
         // الاشتراكات اللي انتهت اليوم
@@ -61,7 +66,7 @@ public class SubscriptionNotificationService
             // تحديث الحالة لـ expired
             sub.Status = "expired";
 
-            // ✅ تسجيل في سجل الاشتراكات
+            // تسجيل في سجل الاشتراكات
             var history = new SubscriptionHistory
             {
                 SubscriptionId = sub.Id,
@@ -81,16 +86,17 @@ public class SubscriptionNotificationService
             await CreateNotification(sub.SupplierId,
                 "انتهت باقتك",
                 $"انتهت باقتك ({sub.Plan.NameAr}). قطعك مخفية الآن عن العملاء. جدد اشتراكك لإظهارها.",
-                "subscription_expired");
+                "subscription_expired",
+                "high");
         }
 
         await _context.SaveChangesAsync();
     }
 
     /// <summary>
-    /// إنشاء إشعار
+    /// إنشاء إشعار مع Push
     /// </summary>
-    private async Task CreateNotification(long supplierId, string title, string body, string type)
+    private async Task CreateNotification(long supplierId, string title, string body, string type, string priority)
     {
         // تحقق من عدم وجود إشعار مكرر اليوم
         var today = DateTime.UtcNow.Date;
@@ -102,6 +108,7 @@ public class SubscriptionNotificationService
 
         if (exists) return;
 
+        // إنشاء الإشعار
         var notification = new Notification
         {
             UserId = supplierId,
@@ -109,12 +116,32 @@ public class SubscriptionNotificationService
             Type = type,
             Title = title,
             Body = body,
-            Priority = type.Contains("urgent") || type.Contains("expired") ? "high" : "normal",
+            Priority = priority,
             IsRead = false,
             IsPushSent = false,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+
+        // ✅ إرسال Push Notification
+        var pushData = new Dictionary<string, string>
+        {
+            { "type", type },
+            { "notificationId", notification.Id.ToString() }
+        };
+
+        var pushSent = await _firebasePushService.SendToUserAsync(
+            supplierId,
+            "supplier",
+            title,
+            body,
+            pushData
+        );
+
+        notification.IsPushSent = pushSent;
+        notification.PushSentAt = pushSent ? DateTime.UtcNow : null;
+        await _context.SaveChangesAsync();
     }
 }

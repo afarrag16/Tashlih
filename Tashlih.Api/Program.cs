@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -6,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using System;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Tashlih.Api.BackgroundServices;
 using Tashlih.Api.Hubs;
 using Tashlih.Api.Services;
@@ -175,7 +177,66 @@ namespace Tashlih.Api
             builder.Services.AddSignalR();
             builder.Services.AddScoped<IChatHubService, ChatHubService>();
             builder.Services.AddScoped<IOrderHubService, OrderHubService>();
+           
+            #region Rate Limiting
+            // Rate Limiting
+            builder.Services.AddRateLimiter(options =>
+            {
+                // 1️⃣ الحد العام - 100 طلب/دقيقة
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            AutoReplenishment = true,
+                            PermitLimit = 100,
+                            Window = TimeSpan.FromMinutes(1)
+                        }));
+
+                // 2️⃣ حد تسجيل الدخول - 5 محاولات / 15 دقيقة
+                options.AddFixedWindowLimiter("login", opt =>
+                {
+                    opt.PermitLimit = 5;
+                    opt.Window = TimeSpan.FromMinutes(15);
+                    opt.AutoReplenishment = true;
+                });
+
+                // 3️⃣ حد إرسال OTP - 3 مرات / 10 دقائق
+                options.AddFixedWindowLimiter("otp", opt =>
+                {
+                    opt.PermitLimit = 3;
+                    opt.Window = TimeSpan.FromMinutes(10);
+                    opt.AutoReplenishment = true;
+                });
+
+                // رسالة عند تجاوز الحد
+                options.RejectionStatusCode = 429;
+                options.OnRejected = async (context, token) =>
+                {
+                    context.HttpContext.Response.ContentType = "application/json";
+                    await context.HttpContext.Response.WriteAsync(
+                        "{\"success\":false,\"message\":\"Too many requests\",\"messageAr\":\"طلبات كثيرة، حاول لاحقاً\"}", token);
+                };
+            });
+            #endregion
+
+          
+
             var app = builder.Build();
+
+            #region  Security Headers
+            // Security Headers
+            app.Use(async (context, next) =>
+            {
+                context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+                context.Response.Headers.Append("X-Frame-Options", "DENY");
+                context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+                context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+                await next();
+            });
+
+            #endregion
+
             app.UseCors("AllowAll");  // CORS 
 
             app.UseSwagger();
@@ -184,7 +245,9 @@ namespace Tashlih.Api
             //app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseAuthentication();
+            app.UseRateLimiter();
             app.UseAuthorization();
+            
 
             app.MapControllers();
 
