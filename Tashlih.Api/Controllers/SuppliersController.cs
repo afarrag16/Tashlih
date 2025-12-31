@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Tashlih.Application.Interfaces;
+using Tashlih.Infrastructure.Services;
 
 namespace Tashlih.Api.Controllers;
 
@@ -10,10 +11,12 @@ namespace Tashlih.Api.Controllers;
 public class SuppliersController : ControllerBase
 {
     private readonly ISuppliersService _suppliersService;
+    private readonly SupplierDashboardService _dashboardService;
 
-    public SuppliersController(ISuppliersService suppliersService)
+    public SuppliersController(ISuppliersService suppliersService, SupplierDashboardService dashboardService)
     {
         _suppliersService = suppliersService;
+        _dashboardService = dashboardService;
     }
 
     /// <summary>
@@ -72,6 +75,24 @@ public class SuppliersController : ControllerBase
         var supplierId = GetSupplierId();
         var result = await _suppliersService.GetSupplierStatisticsAsync(supplierId, period, fromDate, toDate);
 
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// إحصائيات داشبورد المورد
+    /// </summary>
+    [HttpGet("dashboard")]
+    [Authorize]
+    public async Task<IActionResult> GetDashboard([FromQuery] string period = "week")
+    {
+        if (!IsSupplier())
+            return Forbid();
+
+        var supplierId = GetSupplierId();
+        if (supplierId == 0)
+            return Unauthorized(new { success = false, message = "Unauthorized", messageAr = "غير مصرح" });
+
+        var result = await _dashboardService.GetDashboardAsync(supplierId, period);
         return Ok(result);
     }
 

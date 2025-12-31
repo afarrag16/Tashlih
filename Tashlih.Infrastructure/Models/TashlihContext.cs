@@ -78,6 +78,9 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<FavoritePart> FavoriteParts { get; set; }
     public virtual DbSet<FavoriteSupplier> FavoriteSuppliers { get; set; }
     public virtual DbSet<Admin> Admins { get; set; }
+    public virtual DbSet<PartCondition> PartConditions { get; set; }
+    public virtual DbSet<WarrantyType> WarrantyTypes { get; set; }
+    public virtual DbSet<Year> Years { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -1572,6 +1575,38 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnName("updated_at");
+        });
+
+        // Part Conditions
+        modelBuilder.Entity<PartCondition>(entity =>
+        {
+            entity.ToTable("part_conditions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Key).HasColumnName("key");
+            entity.Property(e => e.NameAr).HasColumnName("name_ar");
+            entity.Property(e => e.NameEn).HasColumnName("name_en");
+        });
+
+        // Warranty Types
+        modelBuilder.Entity<WarrantyType>(entity =>
+        {
+            entity.ToTable("warranty_types");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Key).HasColumnName("key");
+            entity.Property(e => e.NameAr).HasColumnName("name_ar");
+            entity.Property(e => e.NameEn).HasColumnName("name_en");
+            entity.Property(e => e.Days).HasColumnName("days");
+        });
+
+        // Years
+        modelBuilder.Entity<Year>(entity =>
+        {
+            entity.ToTable("years");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.YearValue).HasColumnName("year");
         });
 
         OnModelCreatingPartial(modelBuilder);

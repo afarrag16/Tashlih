@@ -151,6 +151,8 @@ namespace Tashlih.Api
             builder.Services.AddScoped<AdminSupplierService>();
             builder.Services.AddScoped<AdminCustomerService>();
             builder.Services.AddScoped<AdminDashboardService>();
+            builder.Services.AddScoped<SupplierDashboardService>();
+            builder.Services.AddScoped<AdminLookupsService>();
 
             #endregion
 
