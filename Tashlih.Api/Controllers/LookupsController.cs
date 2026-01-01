@@ -126,9 +126,9 @@ namespace Tashlih.Api.Controllers
         /// جلب حالات القطع
         /// </summary>
         [HttpGet("part-conditions")]
-        public IActionResult GetPartConditions()
+        public async Task<IActionResult> GetPartConditions()
         {
-            var result = _lookupsService.GetPartConditions();
+            var result = await _lookupsService.GetPartConditionsAsync();
             return Ok(result);
         }
 
@@ -136,9 +136,9 @@ namespace Tashlih.Api.Controllers
         /// جلب أنواع الضمان
         /// </summary>
         [HttpGet("warranty-types")]
-        public IActionResult GetWarrantyTypes()
+        public async Task<IActionResult> GetWarrantyTypes()
         {
-            var result = _lookupsService.GetWarrantyTypes();
+            var result = await _lookupsService.GetWarrantyTypesAsync();
             return Ok(result);
         }
 

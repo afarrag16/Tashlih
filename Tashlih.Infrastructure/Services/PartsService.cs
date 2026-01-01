@@ -84,6 +84,24 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
+            // جلب بيانات الحالة والضمان من الجداول
+            var condition = await _context.PartConditions.FindAsync(request.ConditionId);
+            if (condition == null)
+            {
+                return new PartResponse
+                {
+                    Success = false,
+                    Message = "Invalid condition",
+                    MessageAr = "حالة القطعة غير صحيحة"
+                };
+            }
+
+            WarrantyType? warranty = null;
+            if (request.WarrantyTypeId.HasValue)
+            {
+                warranty = await _context.WarrantyTypes.FindAsync(request.WarrantyTypeId.Value);
+            }
+
             // إنشاء القطعة
             var part = new Part
             {
@@ -93,10 +111,12 @@ namespace Tashlih.Infrastructure.Services
                 Description = request.Description,
                 PartNumber = request.PartNumber,
                 OemNumber = request.OemNumber,
-                Condition = request.Condition,
+                Condition = condition.Key,
+                ConditionId = request.ConditionId,
                 ConditionDetails = request.ConditionDetails,
-                WarrantyType = request.WarrantyType,
-                WarrantyDays = request.WarrantyDays,
+                WarrantyType = warranty?.Key,
+                WarrantyTypeId = request.WarrantyTypeId,
+                WarrantyDays = warranty?.Days,
                 Price = request.Price,
                 OriginalPrice = request.OriginalPrice,
                 Currency = "SAR",
@@ -656,9 +676,13 @@ namespace Tashlih.Infrastructure.Services
             }
 
             // فلترة بالحالة
-            if (!string.IsNullOrEmpty(request.Condition))
+            if (request.ConditionId.HasValue)
             {
-                query = query.Where(p => p.Condition == request.Condition);
+                var condition = await _context.PartConditions.FindAsync(request.ConditionId.Value);
+                if (condition != null)
+                {
+                    query = query.Where(p => p.Condition == condition.Key);
+                }
             }
 
             // فلترة بالسعر
@@ -672,9 +696,13 @@ namespace Tashlih.Infrastructure.Services
             }
 
             // فلترة بالمدينة
-            if (!string.IsNullOrEmpty(request.City))
+            if (request.CityId.HasValue)
             {
-                query = query.Where(p => p.SupplierCity == request.City);
+                var city = await _context.Cities.FindAsync(request.CityId.Value);
+                if (city != null)
+                {
+                    query = query.Where(p => p.SupplierCity == city.NameAr);
+                }
             }
 
             // فلترة بالضمان
@@ -944,8 +972,14 @@ namespace Tashlih.Infrastructure.Services
                     (p.YearTo == null || p.YearTo >= request.Year));
 
             // فلترة بالحالة
-            if (!string.IsNullOrEmpty(request.Condition))
-                query = query.Where(p => p.Condition == request.Condition);
+            if (request.ConditionId.HasValue)
+            {
+                var condition = await _context.PartConditions.FindAsync(request.ConditionId.Value);
+                if (condition != null)
+                {
+                    query = query.Where(p => p.Condition == condition.Key);
+                }
+            }
 
             // فلترة بالسعر
             if (request.MinPrice.HasValue)
@@ -954,8 +988,14 @@ namespace Tashlih.Infrastructure.Services
                 query = query.Where(p => p.Price <= request.MaxPrice);
 
             // فلترة بالمدينة
-            if (!string.IsNullOrEmpty(request.City))
-                query = query.Where(p => p.SupplierCity == request.City);
+            if (request.CityId.HasValue)
+            {
+                var city = await _context.Cities.FindAsync(request.CityId.Value);
+                if (city != null)
+                {
+                    query = query.Where(p => p.SupplierCity == city.NameAr);
+                }
+            }
 
             // فلترة بالضمان
             if (request.HasWarranty.HasValue && request.HasWarranty.Value)

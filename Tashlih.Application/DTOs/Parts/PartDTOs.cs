@@ -16,35 +16,26 @@ namespace Tashlih.Application.DTOs.Parts
         [Required(ErrorMessage = "اسم القطعة بالعربي مطلوب")]
         [StringLength(200, MinimumLength = 2)]
         public string NameAr { get; set; } = null!;
-
         [StringLength(200)]
         public string? NameEn { get; set; }
-         
-        public string? Description { get; set; }
 
+        public string? Description { get; set; }
         [StringLength(50)]
         public string? PartNumber { get; set; }
-
         [StringLength(50)]
         public string? OemNumber { get; set; }
 
         // الحالة والضمان
         [Required(ErrorMessage = "حالة القطعة مطلوبة")]
-        public string Condition { get; set; } = "used"; // new, used, refurbished
-
+        public long ConditionId { get; set; }
         public string? ConditionDetails { get; set; }
-
-        public string? WarrantyType { get; set; } // none, week, month, etc.
-
-        public int? WarrantyDays { get; set; }
+        public long? WarrantyTypeId { get; set; }
 
         // السعر والكمية
         [Required(ErrorMessage = "السعر مطلوب")]
         [Range(0.01, 999999.99, ErrorMessage = "السعر يجب أن يكون أكبر من 0")]
         public decimal Price { get; set; }
-
         public decimal? OriginalPrice { get; set; }
-
         [Range(1, 9999, ErrorMessage = "الكمية يجب أن تكون 1 على الأقل")]
         public int Quantity { get; set; } = 1;
 
@@ -55,26 +46,20 @@ namespace Tashlih.Application.DTOs.Parts
         // معلومات السيارة - إما من القائمة أو مخصص
         public int? VehicleTypeId { get; set; }
         public string? CustomVehicleType { get; set; }
-
         public int? VehicleSubcategoryId { get; set; }
         public string? CustomSubcategory { get; set; }
-
         public int? MakeId { get; set; }
         public string? CustomMake { get; set; }
-
         public int? ModelId { get; set; }
         public string? CustomModel { get; set; }
-
         public short? YearFrom { get; set; }
         public short? YearTo { get; set; }
-
         [StringLength(17)]
         public string? VinNumber { get; set; }
 
         // التوصيل
         public bool DeliveryAvailable { get; set; }
         public bool DeliveryByShop { get; set; }
-
         [StringLength(500)]
         public string? DeliveryNotes { get; set; }
 
@@ -153,10 +138,10 @@ namespace Tashlih.Application.DTOs.Parts
         public int? MakeId { get; set; }
         public int? ModelId { get; set; }
         public short? Year { get; set; }
-        public string? Condition { get; set; }
+        public long? ConditionId { get; set; }
         public decimal? MinPrice { get; set; }
         public decimal? MaxPrice { get; set; }
-        public string? City { get; set; }
+        public int? CityId { get; set; }
         public bool? HasWarranty { get; set; }
         public bool? DeliveryAvailable { get; set; }
         public string? SortBy { get; set; } // price_asc, price_desc, newest, popular

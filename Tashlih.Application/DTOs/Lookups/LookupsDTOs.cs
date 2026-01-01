@@ -87,6 +87,7 @@ namespace Tashlih.Application.DTOs.Lookups
 
     public class YearDto
     {
+        public int Id { get; set; }
         public int Year { get; set; }
     }
 
@@ -94,6 +95,7 @@ namespace Tashlih.Application.DTOs.Lookups
 
     public class CityDto
     {
+        public int Id { get; set; }
         public string? NameAr { get; set; }
         public string? NameEn { get; set; }
     }
@@ -102,6 +104,7 @@ namespace Tashlih.Application.DTOs.Lookups
 
     public class WarrantyTypeDto
     {
+        public int Id { get; set; }
         public string? Key { get; set; }
         public string? NameAr { get; set; }
         public string? NameEn { get; set; }
@@ -112,6 +115,7 @@ namespace Tashlih.Application.DTOs.Lookups
 
     public class PartConditionDto
     {
+        public int Id { get; set; }
         public string? Key { get; set; }
         public string? NameAr { get; set; }
         public string? NameEn { get; set; }

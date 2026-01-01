@@ -209,18 +209,21 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<LookupsResponse<YearDto>> GetYearsAsync()
         {
-            var currentYear = DateTime.Now.Year;
-            var years = Enumerable.Range(1970, currentYear - 1970 + 2)
-                .OrderByDescending(y => y)
-                .Select(y => new YearDto { Year = y })
-                .ToList();
+            var years = await _context.Years
+                .OrderByDescending(y => y.YearValue)
+                .Select(y => new YearDto
+                {
+                    Id = (int)y.Id,
+                    Year = y.YearValue
+                })
+                .ToListAsync();
 
-            return await Task.FromResult(new LookupsResponse<YearDto>
+            return new LookupsResponse<YearDto>
             {
                 Success = true,
                 Data = years,
                 Count = years.Count
-            });
+            };
         }
 
         /// <summary>
@@ -228,55 +231,40 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<LookupsResponse<CityDto>> GetCitiesAsync()
         {
-            var cities = new List<CityDto>
-            {
-                new() { NameAr = "الرياض", NameEn = "Riyadh" },
-                new() { NameAr = "جدة", NameEn = "Jeddah" },
-                new() { NameAr = "مكة المكرمة", NameEn = "Makkah" },
-                new() { NameAr = "المدينة المنورة", NameEn = "Madinah" },
-                new() { NameAr = "الدمام", NameEn = "Dammam" },
-                new() { NameAr = "الخبر", NameEn = "Khobar" },
-                new() { NameAr = "الظهران", NameEn = "Dhahran" },
-                new() { NameAr = "الأحساء", NameEn = "Al-Ahsa" },
-                new() { NameAr = "القطيف", NameEn = "Qatif" },
-                new() { NameAr = "الجبيل", NameEn = "Jubail" },
-                new() { NameAr = "الطائف", NameEn = "Taif" },
-                new() { NameAr = "تبوك", NameEn = "Tabuk" },
-                new() { NameAr = "بريدة", NameEn = "Buraidah" },
-                new() { NameAr = "عنيزة", NameEn = "Unaizah" },
-                new() { NameAr = "حائل", NameEn = "Hail" },
-                new() { NameAr = "أبها", NameEn = "Abha" },
-                new() { NameAr = "خميس مشيط", NameEn = "Khamis Mushait" },
-                new() { NameAr = "نجران", NameEn = "Najran" },
-                new() { NameAr = "جازان", NameEn = "Jazan" },
-                new() { NameAr = "الباحة", NameEn = "Al-Baha" },
-                new() { NameAr = "سكاكا", NameEn = "Sakaka" },
-                new() { NameAr = "عرعر", NameEn = "Arar" },
-                new() { NameAr = "القريات", NameEn = "Qurayyat" },
-                new() { NameAr = "ينبع", NameEn = "Yanbu" },
-                new() { NameAr = "رابغ", NameEn = "Rabigh" },
-                new() { NameAr = "القنفذة", NameEn = "Al-Qunfudhah" }
-            };
+            var cities = await _context.Cities
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.NameAr)
+                .Select(c => new CityDto
+                {
+                    Id = c.Id,
+                    NameAr = c.NameAr,
+                    NameEn = c.NameEn
+                })
+                .ToListAsync();
 
-            return await Task.FromResult(new LookupsResponse<CityDto>
+            return new LookupsResponse<CityDto>
             {
                 Success = true,
                 Data = cities,
                 Count = cities.Count
-            });
+            };
         }
 
         /// <summary>
         /// جلب حالات القطع
         /// </summary>
-        public LookupsResponse<PartConditionDto> GetPartConditions()
+        public async Task<LookupsResponse<PartConditionDto>> GetPartConditionsAsync()
         {
-            var conditions = new List<PartConditionDto>
-            {
-                new() { Key = "new", NameAr = "جديد", NameEn = "New" },
-                new() { Key = "used", NameAr = "مستعمل", NameEn = "Used" },
-                new() { Key = "refurbished", NameAr = "مجدد", NameEn = "Refurbished" }
-            };
+            var conditions = await _context.PartConditions
+                .OrderBy(c => c.Id)
+                .Select(c => new PartConditionDto
+                {
+                    Id = (int)c.Id,
+                    Key = c.Key,
+                    NameAr = c.NameAr,
+                    NameEn = c.NameEn
+                })
+                .ToListAsync();
 
             return new LookupsResponse<PartConditionDto>
             {
@@ -285,23 +273,22 @@ namespace Tashlih.Infrastructure.Services
                 Count = conditions.Count
             };
         }
-
         /// <summary>
         /// جلب أنواع الضمان
         /// </summary>
-        public LookupsResponse<WarrantyTypeDto> GetWarrantyTypes()
+        public async Task<LookupsResponse<WarrantyTypeDto>> GetWarrantyTypesAsync()
         {
-            var warranties = new List<WarrantyTypeDto>
-            {
-                new() { Key = "none", NameAr = "بدون ضمان", NameEn = "No Warranty", Days = 0 },
-                new() { Key = "week", NameAr = "أسبوع", NameEn = "1 Week", Days = 7 },
-                new() { Key = "two_weeks", NameAr = "أسبوعين", NameEn = "2 Weeks", Days = 14 },
-                new() { Key = "month", NameAr = "شهر", NameEn = "1 Month", Days = 30 },
-                new() { Key = "two_months", NameAr = "شهرين", NameEn = "2 Months", Days = 60 },
-                new() { Key = "three_months", NameAr = "3 أشهر", NameEn = "3 Months", Days = 90 },
-                new() { Key = "six_months", NameAr = "6 أشهر", NameEn = "6 Months", Days = 180 },
-                new() { Key = "year", NameAr = "سنة", NameEn = "1 Year", Days = 365 }
-            };
+            var warranties = await _context.WarrantyTypes
+                .OrderBy(w => w.Days)
+                .Select(w => new WarrantyTypeDto
+                {
+                    Id = (int)w.Id,
+                    Key = w.Key,
+                    NameAr = w.NameAr,
+                    NameEn = w.NameEn,
+                    Days = w.Days
+                })
+                .ToListAsync();
 
             return new LookupsResponse<WarrantyTypeDto>
             {
@@ -319,8 +306,8 @@ namespace Tashlih.Infrastructure.Services
             var vehicleTypes = await GetVehicleTypesAsync();
             var partCategories = await GetPartCategoriesAsync(hierarchical: true);
             var makes = await GetVehicleMakesAsync();
-            var conditions = GetPartConditions();
-            var warranties = GetWarrantyTypes();
+            var conditions = await GetPartConditionsAsync();
+            var warranties = await GetWarrantyTypesAsync();
             var cities = await GetCitiesAsync();
 
             return new AllLookupsResponse

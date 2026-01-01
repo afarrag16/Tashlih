@@ -27,10 +27,10 @@ namespace Tashlih.Application.Interfaces
         Task<LookupsResponse<CityDto>> GetCitiesAsync();
 
         // حالات القطع
-        LookupsResponse<PartConditionDto> GetPartConditions();
+        Task<LookupsResponse<PartConditionDto>> GetPartConditionsAsync();
 
         // أنواع الضمان
-        LookupsResponse<WarrantyTypeDto> GetWarrantyTypes();
+        Task<LookupsResponse<WarrantyTypeDto>> GetWarrantyTypesAsync();
 
         // كل البيانات
         Task<AllLookupsResponse> GetAllLookupsAsync();

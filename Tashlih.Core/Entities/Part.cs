@@ -22,6 +22,7 @@ public partial class Part
     public string? OemNumber { get; set; }
 
     public string Condition { get; set; } = null!;
+    public long? ConditionId { get; set; }  // ✅ جديد
 
     public string? ConditionDetails { get; set; }
 
@@ -68,6 +69,7 @@ public partial class Part
     public string? VinNumber { get; set; }
 
     public string? WarrantyType { get; set; }
+    public long? WarrantyTypeId { get; set; }  // ✅ جديد
 
     public bool DeliveryAvailable { get; set; }
 

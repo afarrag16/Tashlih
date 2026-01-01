@@ -519,6 +519,8 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.IsFeatured).HasColumnName("is_featured");
             entity.Property(e => e.MakeId).HasColumnName("make_id");
             entity.Property(e => e.ModelId).HasColumnName("model_id");
+            entity.Property(e => e.ConditionId).HasColumnName("condition_id");
+            entity.Property(e => e.WarrantyTypeId).HasColumnName("warranty_type_id");
             entity.Property(e => e.NameAr)
                 .HasMaxLength(200)
                 .HasColumnName("name_ar");
