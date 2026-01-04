@@ -32,6 +32,7 @@ namespace Tashlih.Application.DTOs.Auth
         public string? Status { get; set; }
         public bool IsVerified { get; set; }
         public string? VerificationStatus { get; set; }
+        public string? RejectionReason { get; set; }
         public string? PreferredLanguage { get; set; }
         public bool NotificationsEnabled { get; set; }
         public DateTime? CreatedAt { get; set; }

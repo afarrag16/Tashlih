@@ -453,63 +453,7 @@ namespace Tashlih.Infrastructure.Services
             };
         }
 
-        /// <summary>
-        /// توثيق المورد (للأدمن فقط)
-        /// </summary>
-        public async Task<VerificationResponse> VerifySupplierAsync(long adminId, VerifySupplierRequest request)
-        {
-            var profile = await _context.SupplierProfiles
-                .FirstOrDefaultAsync(s => s.Id == request.SupplierId && s.DeletedAt == null);
-
-            if (profile == null)
-            {
-                return new VerificationResponse
-                {
-                    Success = false,
-                    Message = "Supplier not found",
-                    MessageAr = "المورد غير موجود"
-                };
-            }
-
-            if (request.IsApproved)
-            {
-                // الموافقة على التوثيق
-                profile.IsVerified = true;
-                profile.VerificationStatus = "approved";
-                profile.VerifiedAt = DateTime.UtcNow;
-                profile.VerifiedBy = adminId;
-                profile.RejectionReason = null;
-
-               
-            }
-            else
-            {
-                // رفض التوثيق
-                profile.IsVerified = false;
-                profile.VerificationStatus = "rejected";
-                profile.RejectionReason = request.RejectionReason;
-            }
-
-            profile.VerificationReviewedAt = DateTime.UtcNow;
-
-            if (!string.IsNullOrEmpty(request.AdminNotes))
-                profile.AdminNotes = request.AdminNotes;
-
-            profile.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return new VerificationResponse
-            {
-                Success = true,
-                Message = request.IsApproved ? "Supplier verified successfully" : "Verification rejected",
-                MessageAr = request.IsApproved ? "تم توثيق المورد بنجاح" : "تم رفض التوثيق",
-                IsVerified = profile.IsVerified,
-                VerificationStatus = profile.VerificationStatus,
-                RejectionReason = profile.RejectionReason,
-                ReviewedAt = profile.VerificationReviewedAt
-            };
-        }
+       
 
         /// <summary>
         /// الحصول على إحصائيات المورد
@@ -582,7 +526,8 @@ namespace Tashlih.Infrastructure.Services
                     RatingCount = profile.RatingCount,
                     TotalViews = totalViews,
                     IsVerified = profile.IsVerified,
-                    VerificationStatus = profile.VerificationStatus
+                    VerificationStatus = profile.VerificationStatus,
+                    RejectionReason = profile.RejectionReason
                 }
             };
         }

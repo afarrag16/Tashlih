@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Tashlih.Application.DTOs.Admin;
 using Tashlih.Application.DTOs.Parts;
+using Tashlih.Application.DTOs.SupplierProfile;
 using Tashlih.Infrastructure.Models;
 
 namespace Tashlih.Infrastructure.Services;
@@ -300,6 +301,58 @@ public class AdminSupplierService
             Success = true,
             Message = "Supplier deleted successfully",
             MessageAr = "تم حذف المورد بنجاح"
+        };
+    }
+
+    /// <summary>
+    /// توثيق المورد (موافقة/رفض)
+    /// </summary>
+    public async Task<AdminSupplierActionResponse> VerifySupplierAsync(long adminId, VerifySupplierRequest request)
+    {
+        var supplier = await _context.SupplierProfiles
+            .FirstOrDefaultAsync(s => s.Id == request.SupplierId && s.DeletedAt == null);
+
+        if (supplier == null)
+        {
+            return new AdminSupplierActionResponse
+            {
+                Success = false,
+                Message = "Supplier not found",
+                MessageAr = "المورد غير موجود"
+            };
+        }
+
+        if (request.IsApproved)
+        {
+            // الموافقة على التوثيق
+            supplier.IsVerified = true;
+            supplier.VerificationStatus = "approved";
+            supplier.VerifiedAt = DateTime.UtcNow;
+            //supplier.VerifiedBy = adminId;
+            supplier.RejectionReason = null;
+        }
+        else
+        {
+            // رفض التوثيق
+            supplier.IsVerified = false;
+            supplier.VerificationStatus = "rejected";
+            supplier.RejectionReason = request.RejectionReason;
+        }
+
+        supplier.VerificationReviewedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrEmpty(request.AdminNotes))
+            supplier.AdminNotes = request.AdminNotes;
+
+        supplier.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new AdminSupplierActionResponse
+        {
+            Success = true,
+            Message = request.IsApproved ? "Supplier verified successfully" : "Verification rejected",
+            MessageAr = request.IsApproved ? "تم توثيق المورد بنجاح" : "تم رفض التوثيق"
         };
     }
 

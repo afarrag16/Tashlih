@@ -1,4 +1,6 @@
-﻿namespace Tashlih.Application.DTOs.Admin;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace Tashlih.Application.DTOs.Admin;
 
 // Response عام
 public class LookupResponse
@@ -37,6 +39,7 @@ public class CategoryRequest
 {
     public string NameAr { get; set; } = null!;
     public string? NameEn { get; set; }
+    public IFormFile? Icon { get; set; }
 }
 
 // إضافة/تعديل تصنيف فرعي

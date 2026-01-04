@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Tashlih.Application.DTOs.Admin;
+using Tashlih.Application.Interfaces;
 using Tashlih.Core.Entities;
 using Tashlih.Infrastructure.Models;
 
@@ -8,10 +9,11 @@ namespace Tashlih.Infrastructure.Services;
 public class AdminLookupsService
 {
     private readonly TashlihContext _context;
-
-    public AdminLookupsService(TashlihContext context)
+    private readonly IFileService _fileService;
+    public AdminLookupsService(TashlihContext context, IFileService fileService)
     {
         _context = context;
+        _fileService = fileService;
     }
 
     #region Vehicle Types (أنواع المركبات)
@@ -227,10 +229,18 @@ public class AdminLookupsService
         if (exists)
             return new LookupResponse { Success = false, Message = "Category already exists", MessageAr = "التصنيف موجود مسبقاً" };
 
+        // ✅ رفع الأيقونة
+        string? iconUrl = null;
+        if (request.Icon != null)
+        {
+            iconUrl = await _fileService.UploadFileAsync(request.Icon, "categories/icons");
+        }
+
         var entity = new PartCategory
         {
             NameAr = request.NameAr,
             NameEn = request.NameEn,
+            Icon = iconUrl,  // ✅ رابط الصورة
             SortOrder = 0,
             Level = 0,
             IsActive = true
@@ -244,7 +254,7 @@ public class AdminLookupsService
             Success = true,
             Message = "Category added successfully",
             MessageAr = "تمت إضافة التصنيف بنجاح",
-            Data = new { entity.Id, entity.NameAr, entity.NameEn }
+            Data = new { entity.Id, entity.NameAr, entity.NameEn, entity.Icon }
         };
     }
 
@@ -257,6 +267,12 @@ public class AdminLookupsService
         entity.NameAr = request.NameAr;
         entity.NameEn = request.NameEn;
 
+        // ✅ رفع الأيقونة الجديدة (لو موجودة)
+        if (request.Icon != null)
+        {
+            entity.Icon = await _fileService.UploadFileAsync(request.Icon, "categories/icons");
+        }
+
         await _context.SaveChangesAsync();
 
         return new LookupResponse
@@ -264,7 +280,7 @@ public class AdminLookupsService
             Success = true,
             Message = "Category updated successfully",
             MessageAr = "تم تعديل التصنيف بنجاح",
-            Data = new { entity.Id, entity.NameAr, entity.NameEn }
+            Data = new { entity.Id, entity.NameAr, entity.NameEn, entity.Icon }
         };
     }
 

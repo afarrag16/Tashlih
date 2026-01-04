@@ -109,7 +109,7 @@ public class AdminLookupsController : ControllerBase
     #region Categories (التصنيفات)
 
     [HttpPost("categories")]
-    public async Task<IActionResult> AddCategory([FromBody] CategoryRequest request)
+    public async Task<IActionResult> AddCategory([FromForm] CategoryRequest request)
     {
         if (!IsAdmin()) return Forbid();
         var result = await _lookupsService.AddCategoryAsync(request);
@@ -117,7 +117,7 @@ public class AdminLookupsController : ControllerBase
     }
 
     [HttpPut("categories/{id}")]
-    public async Task<IActionResult> UpdateCategory(long id, [FromBody] CategoryRequest request)
+    public async Task<IActionResult> UpdateCategory(long id, [FromForm] CategoryRequest request)
     {
         if (!IsAdmin()) return Forbid();
         var result = await _lookupsService.UpdateCategoryAsync(id, request);

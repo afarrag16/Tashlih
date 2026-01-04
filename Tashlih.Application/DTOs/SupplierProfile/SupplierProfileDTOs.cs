@@ -211,5 +211,6 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public int TotalViews { get; set; }
         public bool IsVerified { get; set; }
         public string? VerificationStatus { get; set; }
+        public string? RejectionReason { get; set; }
     }
 }

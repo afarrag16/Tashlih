@@ -183,7 +183,8 @@ namespace Tashlih.Infrastructure.Services
                     Latitude = request.Latitude,          // ✅ جديد
                     Longitude = request.Longitude,        // ✅ جديد
                     Status = "active",
-                    VerificationStatus = "pending",
+                    VerificationStatus = "pending_review",
+                    VerificationSubmittedAt = DateTime.UtcNow,
                     IsVerified = false,
                     RatingAverage = 0,
                     RatingCount = 0,
@@ -787,6 +788,7 @@ namespace Tashlih.Infrastructure.Services
                     Status = supplier.Status,
                     IsVerified = supplier.IsVerified,
                     VerificationStatus = supplier.VerificationStatus,
+                    RejectionReason = supplier.RejectionReason,
                     PreferredLanguage = supplier.PreferredLanguage,
                     CreatedAt = supplier.CreatedAt
                 }

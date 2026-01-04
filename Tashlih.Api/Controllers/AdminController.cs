@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Tashlih.Application.DTOs.Admin;
 using Tashlih.Application.DTOs.Subscriptions;
+using Tashlih.Application.DTOs.SupplierProfile;
 using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Services;
+
 
 namespace Tashlih.Api.Controllers;
 
@@ -156,6 +158,29 @@ public class AdminController : ControllerBase
     }
 
     #endregion
+
+    /// <summary>
+    /// توثيق مورد (موافقة/رفض)
+    /// </summary>
+    [HttpPut("suppliers/{id}/verify")]
+    [Authorize]
+    public async Task<IActionResult> VerifySupplier(long id, [FromBody] VerifySupplierRequest request)
+    {
+        if (!IsAdmin())
+            return Forbid();
+
+        var adminId = GetAdminId();
+
+        // تعيين الـ supplierId من الـ URL
+        request.SupplierId = id;
+
+        var result = await _supplierService.VerifySupplierAsync(adminId, request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 
     #region إدارة الموردين
 

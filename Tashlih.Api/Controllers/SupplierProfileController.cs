@@ -174,27 +174,7 @@ namespace Tashlih.Api.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// توثيق المورد (للأدمن فقط)
-        /// </summary>
-        [HttpPost("verification/verify")]
-        [Authorize(Roles = "Admin,admin")]
-        public async Task<IActionResult> VerifySupplier([FromBody] VerifySupplierRequest request)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var adminId = GetUserId();
-            if (adminId == 0)
-                return Unauthorized(new { success = false, message = "Unauthorized", messageAr = "غير مصرح" });
-
-            var result = await _supplierProfileService.VerifySupplierAsync(adminId, request);
-
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
-        }
+       
 
         /// <summary>
         /// الحصول على إحصائيات المورد

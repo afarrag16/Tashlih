@@ -15,7 +15,7 @@ namespace Tashlih.Application.Interfaces
         Task<VerificationResponse> UpdateVerificationDataAsync(long supplierId, UpdateVerificationDataRequest request);
         Task<VerificationResponse> GetVerificationStatusAsync(long supplierId);
         Task<VerificationResponse> RequestVerificationAsync(long supplierId);
-        Task<VerificationResponse> VerifySupplierAsync(long adminId, VerifySupplierRequest request);
+        
 
         // الإحصائيات
         Task<SupplierStatsResponse> GetSupplierStatsAsync(long supplierId);
