@@ -153,6 +153,9 @@ namespace Tashlih.Api
             builder.Services.AddScoped<AdminDashboardService>();
             builder.Services.AddScoped<SupplierDashboardService>();
             builder.Services.AddScoped<AdminLookupsService>();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ILogService, LogService>();
+            builder.Services.AddScoped<AdminLogsService>();
 
             #endregion
 
@@ -252,6 +255,10 @@ namespace Tashlih.Api
             
 
             app.MapControllers();
+
+            //// تبع عماد يونس
+            //app.UseDefaultFiles();
+            //app.UseStaticFiles();
 
             // SignalR Hub
             app.MapHub<ChatHub>("/chathub");

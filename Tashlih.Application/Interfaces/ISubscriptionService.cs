@@ -13,8 +13,8 @@ public interface ISubscriptionService
     // للأدمن
     Task<AdminPlansResponse> GetAllPlansAsync();
     Task<SubscriptionResponse> CreatePlanAsync(AdminCreatePlanRequest request, IFormFile? logo);
-    Task<SubscriptionResponse> UpdatePlanAsync(long planId, AdminUpdatePlanRequest request, IFormFile? logo);
-    Task<SubscriptionResponse> DeletePlanAsync(long planId);
+    Task<SubscriptionResponse> UpdatePlanAsync(long planId, AdminUpdatePlanRequest request, IFormFile? logo, long adminId);
+    Task<SubscriptionResponse> DeletePlanAsync(long planId, long adminId);
     Task<AdminSubscriptionsResponse> GetAllSubscriptionsAsync();
 
     // للتسجيل (المورد الجديد)

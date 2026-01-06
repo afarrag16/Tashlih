@@ -19,19 +19,22 @@ public class AdminController : ControllerBase
     private readonly AdminSupplierService _supplierService;
     private readonly AdminCustomerService _customerService;
     private readonly AdminDashboardService _dashboardService;
+    private readonly AdminLogsService _logsService;
 
 
     public AdminController(IAdminAuthService adminAuthService,
         ISubscriptionService subscriptionService,
         AdminSupplierService supplierService,
         AdminCustomerService customerService,
-        AdminDashboardService dashboardService)
+        AdminDashboardService dashboardService,
+        AdminLogsService logsService)
     {
         _adminAuthService = adminAuthService;
         _subscriptionService = subscriptionService;
         _supplierService = supplierService;
         _customerService = customerService;
         _dashboardService = dashboardService;
+        _logsService = logsService;
     }
 
     #region المصادقة
@@ -113,11 +116,10 @@ public class AdminController : ControllerBase
         if (!IsAdmin())
             return Forbid();
 
-        var result = await _subscriptionService.UpdatePlanAsync(id, request, logo);
-
+        var adminId = GetAdminId();
+        var result = await _subscriptionService.UpdatePlanAsync(id, request, logo, adminId);
         if (!result.Success)
             return BadRequest(result);
-
         return Ok(result);
     }
 
@@ -131,11 +133,10 @@ public class AdminController : ControllerBase
         if (!IsAdmin())
             return Forbid();
 
-        var result = await _subscriptionService.DeletePlanAsync(id);
-
+        var adminId = GetAdminId();
+        var result = await _subscriptionService.DeletePlanAsync(id, adminId);
         if (!result.Success)
             return BadRequest(result);
-
         return Ok(result);
     }
 
@@ -159,6 +160,11 @@ public class AdminController : ControllerBase
 
     #endregion
 
+
+
+    #region إدارة الموردين
+
+
     /// <summary>
     /// توثيق مورد (موافقة/رفض)
     /// </summary>
@@ -181,8 +187,6 @@ public class AdminController : ControllerBase
 
         return Ok(result);
     }
-
-    #region إدارة الموردين
 
     /// <summary>
     /// عرض كل الموردين
@@ -286,7 +290,6 @@ public class AdminController : ControllerBase
     {
         if (!IsAdmin())
             return Forbid();
-
         var result = await _customerService.GetAllCustomersAsync(request);
         return Ok(result);
     }
@@ -300,12 +303,9 @@ public class AdminController : ControllerBase
     {
         if (!IsAdmin())
             return Forbid();
-
         var result = await _customerService.GetCustomerByIdAsync(id);
-
         if (!result.Success)
             return NotFound(result);
-
         return Ok(result);
     }
 
@@ -319,11 +319,10 @@ public class AdminController : ControllerBase
         if (!IsAdmin())
             return Forbid();
 
-        var result = await _customerService.ActivateCustomerAsync(id, request);
-
+        var adminId = GetAdminId();
+        var result = await _customerService.ActivateCustomerAsync(id, request, adminId);
         if (!result.Success)
             return BadRequest(result);
-
         return Ok(result);
     }
 
@@ -337,11 +336,10 @@ public class AdminController : ControllerBase
         if (!IsAdmin())
             return Forbid();
 
-        var result = await _customerService.DeactivateCustomerAsync(id, request);
-
+        var adminId = GetAdminId();
+        var result = await _customerService.DeactivateCustomerAsync(id, request, adminId);
         if (!result.Success)
             return BadRequest(result);
-
         return Ok(result);
     }
 
@@ -355,13 +353,14 @@ public class AdminController : ControllerBase
         if (!IsAdmin())
             return Forbid();
 
-        var result = await _customerService.DeleteCustomerAsync(id);
-
+        var adminId = GetAdminId();
+        var result = await _customerService.DeleteCustomerAsync(id, adminId);
         if (!result.Success)
             return BadRequest(result);
-
         return Ok(result);
     }
+
+  
 
     #endregion
 
@@ -381,6 +380,38 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
+    #endregion
+
+    #region احصائيات النشاط
+    /// <summary>
+    /// عرض سجل العمليات
+    /// </summary>
+    [HttpGet("logs")]
+    [Authorize]
+    public async Task<IActionResult> GetLogs([FromQuery] LogsRequest request)
+    {
+        if (!IsAdmin())
+            return Forbid();
+
+        var result = await _logsService.GetLogsAsync(request);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// تفاصيل عملية
+    /// </summary>
+    [HttpGet("logs/{id}")]
+    [Authorize]
+    public async Task<IActionResult> GetLogById(long id)
+    {
+        if (!IsAdmin())
+            return Forbid();
+
+        var result = await _logsService.GetLogByIdAsync(id);
+        if (!result.Success)
+            return NotFound(result);
+        return Ok(result);
+    }
     #endregion
 
     #region Helper Methods

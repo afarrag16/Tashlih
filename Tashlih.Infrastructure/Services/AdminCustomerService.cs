@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Tashlih.Application.DTOs.Admin;
 using Tashlih.Application.DTOs.Parts;
+using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Models;
 
 namespace Tashlih.Infrastructure.Services;
@@ -10,11 +11,13 @@ public class AdminCustomerService
 {
     private readonly TashlihContext _context;
     private readonly IConfiguration _configuration;
+    private readonly ILogService _logService;
 
-    public AdminCustomerService(TashlihContext context, IConfiguration configuration)
+    public AdminCustomerService(TashlihContext context, IConfiguration configuration, ILogService logService)
     {
         _context = context;
         _configuration = configuration;
+        _logService = logService;
     }
 
     /// <summary>
@@ -155,7 +158,7 @@ public class AdminCustomerService
     /// <summary>
     /// تفعيل عميل
     /// </summary>
-    public async Task<AdminCustomerActionResponse> ActivateCustomerAsync(long customerId, AdminCustomerActionRequest request)
+    public async Task<AdminCustomerActionResponse> ActivateCustomerAsync(long customerId, AdminCustomerActionRequest request, long adminId)
     {
         var customer = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == customerId && u.DeletedAt == null);
@@ -170,10 +173,27 @@ public class AdminCustomerService
             };
         }
 
+        var oldStatus = customer.Status;
+
         customer.Status = "active";
         customer.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "activate",
+            actionAr: "تفعيل",
+            entityType: "user",
+            entityTypeAr: "عميل",
+            entityId: customer.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = customer.Status },
+            description: $"تم تفعيل حساب العميل: {customer.FullName}"
+        );
 
         return new AdminCustomerActionResponse
         {
@@ -186,7 +206,7 @@ public class AdminCustomerService
     /// <summary>
     /// إيقاف عميل
     /// </summary>
-    public async Task<AdminCustomerActionResponse> DeactivateCustomerAsync(long customerId, AdminCustomerActionRequest request)
+    public async Task<AdminCustomerActionResponse> DeactivateCustomerAsync(long customerId, AdminCustomerActionRequest request, long adminId)
     {
         var customer = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == customerId && u.DeletedAt == null);
@@ -201,10 +221,27 @@ public class AdminCustomerService
             };
         }
 
+        var oldStatus = customer.Status;
+
         customer.Status = "inactive";
         customer.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "deactivate",
+            actionAr: "إيقاف",
+            entityType: "user",
+            entityTypeAr: "عميل",
+            entityId: customer.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = customer.Status },
+            description: $"تم إيقاف حساب العميل: {customer.FullName}"
+        );
 
         return new AdminCustomerActionResponse
         {
@@ -217,7 +254,7 @@ public class AdminCustomerService
     /// <summary>
     /// حذف عميل (Soft Delete)
     /// </summary>
-    public async Task<AdminCustomerActionResponse> DeleteCustomerAsync(long customerId)
+    public async Task<AdminCustomerActionResponse> DeleteCustomerAsync(long customerId, long adminId)
     {
         var customer = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == customerId && u.DeletedAt == null);
@@ -232,10 +269,27 @@ public class AdminCustomerService
             };
         }
 
+        var oldStatus = customer.Status;
+
         customer.DeletedAt = DateTime.UtcNow;
         customer.Status = "deleted";
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "delete",
+            actionAr: "حذف",
+            entityType: "user",
+            entityTypeAr: "عميل",
+            entityId: customer.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = "deleted" },
+            description: $"تم حذف حساب العميل: {customer.FullName}"
+        );
 
         return new AdminCustomerActionResponse
         {

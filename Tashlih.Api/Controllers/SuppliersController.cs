@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Tashlih.Application.DTOs.Suppliers;
 using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Services;
 
@@ -93,6 +94,16 @@ public class SuppliersController : ControllerBase
             return Unauthorized(new { success = false, message = "Unauthorized", messageAr = "غير مصرح" });
 
         var result = await _dashboardService.GetDashboardAsync(supplierId, period);
+        return Ok(result);
+    }
+    /// <summary>
+    /// البحث عن الموردين
+    /// </summary>
+    [HttpGet("search")]
+    [Authorize]
+    public async Task<IActionResult> SearchSuppliers([FromQuery] SuppliersSearchRequest request)
+    {
+        var result = await _suppliersService.SearchSuppliersAsync(request);
         return Ok(result);
     }
 

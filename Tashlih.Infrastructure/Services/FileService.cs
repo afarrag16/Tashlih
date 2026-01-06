@@ -54,9 +54,8 @@ namespace Tashlih.Infrastructure.Services
                 await file.CopyToAsync(stream);
             }
 
-            // إرجاع الـ Full URL
-            var baseUrl = _configuration["AppSettings:BaseUrl"]?.TrimEnd('/') ?? "";
-            return $"{baseUrl}/uploads/{folder}/{uniqueFileName}";
+            // إرجاع الـ Relative Path فقط
+            return $"/uploads/{folder}/{uniqueFileName}";
         }
 
         public async Task<bool> DeleteFileAsync(string fileUrl)

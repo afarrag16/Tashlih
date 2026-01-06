@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Tashlih.Application.DTOs.Admin;
 using Tashlih.Application.DTOs.Parts;
 using Tashlih.Application.DTOs.SupplierProfile;
+using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Models;
 
 namespace Tashlih.Infrastructure.Services;
@@ -11,11 +12,13 @@ public class AdminSupplierService
 {
     private readonly TashlihContext _context;
     private readonly IConfiguration _configuration;
+    private readonly ILogService _logService;
 
-    public AdminSupplierService(TashlihContext context, IConfiguration configuration)
+    public AdminSupplierService(TashlihContext context, IConfiguration configuration, ILogService logService)
     {
         _context = context;
         _configuration = configuration;
+        _logService = logService;
     }
 
     /// <summary>
@@ -228,11 +231,28 @@ public class AdminSupplierService
             };
         }
 
+        var oldStatus = supplier.Status;
+
         supplier.Status = "active";
         supplier.AdminNotes = request.AdminNotes;
         supplier.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "activate",
+            actionAr: "تفعيل",
+            entityType: "supplier_profile",
+            entityTypeAr: "مورد",
+            entityId: supplier.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = supplier.Status },
+            description: $"تم تفعيل حساب المورد: {supplier.FullName}"
+        );
 
         return new AdminSupplierActionResponse
         {
@@ -260,11 +280,28 @@ public class AdminSupplierService
             };
         }
 
+        var oldStatus = supplier.Status;
+
         supplier.Status = "inactive";
         supplier.AdminNotes = request.AdminNotes;
         supplier.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "deactivate",
+            actionAr: "إيقاف",
+            entityType: "supplier_profile",
+            entityTypeAr: "مورد",
+            entityId: supplier.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = supplier.Status },
+            description: $"تم إيقاف حساب المورد: {supplier.FullName}"
+        );
 
         return new AdminSupplierActionResponse
         {
@@ -273,6 +310,7 @@ public class AdminSupplierService
             MessageAr = "تم إيقاف المورد بنجاح"
         };
     }
+
     /// <summary>
     /// حذف مورد (Soft Delete)
     /// </summary>
@@ -291,10 +329,27 @@ public class AdminSupplierService
             };
         }
 
+        var oldStatus = supplier.Status;
+
         supplier.DeletedAt = DateTime.UtcNow;
         supplier.Status = "deleted";
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "delete",
+            actionAr: "حذف",
+            entityType: "supplier_profile",
+            entityTypeAr: "مورد",
+            entityId: supplier.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = "deleted" },
+            description: $"تم حذف حساب المورد: {supplier.FullName}"
+        );
 
         return new AdminSupplierActionResponse
         {
@@ -322,13 +377,15 @@ public class AdminSupplierService
             };
         }
 
+        var oldVerificationStatus = supplier.VerificationStatus;
+        var oldIsVerified = supplier.IsVerified;
+
         if (request.IsApproved)
         {
             // الموافقة على التوثيق
             supplier.IsVerified = true;
             supplier.VerificationStatus = "approved";
             supplier.VerifiedAt = DateTime.UtcNow;
-            //supplier.VerifiedBy = adminId;
             supplier.RejectionReason = null;
         }
         else
@@ -347,6 +404,23 @@ public class AdminSupplierService
         supplier.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: request.IsApproved ? "approve" : "reject",
+            actionAr: request.IsApproved ? "توثيق" : "رفض",
+            entityType: "supplier_profile",
+            entityTypeAr: "مورد",
+            entityId: supplier.Id,
+            oldValues: new { VerificationStatus = oldVerificationStatus, IsVerified = oldIsVerified },
+            newValues: new { VerificationStatus = supplier.VerificationStatus, IsVerified = supplier.IsVerified },
+            description: request.IsApproved
+                ? $"تم توثيق المورد: {supplier.FullName}"
+                : $"تم رفض توثيق المورد: {supplier.FullName} - السبب: {request.RejectionReason}"
+        );
 
         return new AdminSupplierActionResponse
         {

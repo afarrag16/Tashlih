@@ -167,4 +167,22 @@ public class TopSellingPartDto
     public int SalesCount { get; set; }
 }
 
+public class SuppliersSearchRequest
+{
+    public string? Search { get; set; }
+    public string? City { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
+}
+
+public class SuppliersSearchResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? MessageAr { get; set; }
+    public List<SupplierListDto> Suppliers { get; set; } = new();
+    public int TotalCount { get; set; }
+    public PaginationInfo? Pagination { get; set; }
+}
+
 #endregion

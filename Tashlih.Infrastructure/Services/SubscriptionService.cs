@@ -14,12 +14,14 @@ public class SubscriptionService : ISubscriptionService
     private readonly TashlihContext _context;
     private readonly string _baseUrl;
     private readonly string _uploadPath;
+    private readonly ILogService _logService;
 
-    public SubscriptionService(TashlihContext context, IConfiguration configuration)
+    public SubscriptionService(TashlihContext context, IConfiguration configuration, ILogService logService)
     {
         _context = context;
         _baseUrl = configuration["AppSettings:BaseUrl"] ?? "";
         _uploadPath = configuration["AppSettings:UploadPath"] ?? "wwwroot/uploads";
+        _logService = logService;
     }
 
     #region للمورد
@@ -250,7 +252,7 @@ public class SubscriptionService : ISubscriptionService
     /// <summary>
     /// تعديل باقة
     /// </summary>
-    public async Task<SubscriptionResponse> UpdatePlanAsync(long planId, AdminUpdatePlanRequest request, IFormFile? logo)
+    public async Task<SubscriptionResponse> UpdatePlanAsync(long planId, AdminUpdatePlanRequest request, IFormFile? logo, long adminId)
     {
         var plan = await _context.SubscriptionPlans.FindAsync(planId);
         if (plan == null)
@@ -262,6 +264,16 @@ public class SubscriptionService : ISubscriptionService
                 MessageAr = "الباقة غير موجودة"
             };
         }
+
+        // حفظ القيم القديمة للـ Log
+        var oldValues = new
+        {
+            plan.NameAr,
+            plan.Price,
+            plan.DurationDays,
+            plan.MaxParts,
+            plan.IsActive
+        };
 
         // تحديث الحقول
         if (request.NameAr != null) plan.NameAr = request.NameAr;
@@ -279,13 +291,11 @@ public class SubscriptionService : ISubscriptionService
         if (request.IsPopular.HasValue) plan.IsPopular = request.IsPopular.Value;
         if (request.BadgeText != null) plan.BadgeText = request.BadgeText;
         if (request.IsActive.HasValue) plan.IsActive = request.IsActive.Value;
-
         plan.UpdatedAt = DateTime.UtcNow;
 
         // رفع لوجو جديد
         if (logo != null)
         {
-            // حذف اللوجو القديم
             if (!string.IsNullOrEmpty(plan.LogoUrl))
             {
                 DeleteOldLogo(plan.LogoUrl);
@@ -294,6 +304,21 @@ public class SubscriptionService : ISubscriptionService
         }
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "update",
+            actionAr: "تعديل",
+            entityType: "plan",
+            entityTypeAr: "باقة",
+            entityId: plan.Id,
+            oldValues: oldValues,
+            newValues: new { plan.NameAr, plan.Price, plan.DurationDays, plan.MaxParts, plan.IsActive },
+            description: $"تم تعديل الباقة: {plan.NameAr}"
+        );
 
         return new SubscriptionResponse
         {
@@ -306,7 +331,7 @@ public class SubscriptionService : ISubscriptionService
     /// <summary>
     /// حذف باقة
     /// </summary>
-    public async Task<SubscriptionResponse> DeletePlanAsync(long planId)
+    public async Task<SubscriptionResponse> DeletePlanAsync(long planId, long adminId)
     {
         var plan = await _context.SubscriptionPlans.FindAsync(planId);
         if (plan == null)
@@ -333,6 +358,8 @@ public class SubscriptionService : ISubscriptionService
             };
         }
 
+        var planName = plan.NameAr;
+
         // حذف اللوجو
         if (!string.IsNullOrEmpty(plan.LogoUrl))
         {
@@ -341,6 +368,21 @@ public class SubscriptionService : ISubscriptionService
 
         _context.SubscriptionPlans.Remove(plan);
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        await _logService.LogAsync(
+            userId: adminId,
+            userType: "admin",
+            userName: "Admin",
+            action: "delete",
+            actionAr: "حذف",
+            entityType: "plan",
+            entityTypeAr: "باقة",
+            entityId: planId,
+            oldValues: new { PlanName = planName },
+            newValues: null,
+            description: $"تم حذف الباقة: {planName}"
+        );
 
         return new SubscriptionResponse
         {

@@ -267,28 +267,31 @@ public partial class TashlihContext : DbContext
         modelBuilder.Entity<Log>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__logs__3213E83F99C1B5FB");
-
             entity.ToTable("logs");
 
             entity.HasIndex(e => e.Action, "idx_logs_action");
-
             entity.HasIndex(e => e.CreatedAt, "idx_logs_created").IsDescending();
-
             entity.HasIndex(e => e.UserId, "idx_logs_user");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Action)
                 .HasMaxLength(50)
                 .HasColumnName("action");
+            entity.Property(e => e.ActionAr)
+                .HasMaxLength(50)
+                .HasColumnName("action_ar");
             entity.Property(e => e.Context).HasColumnName("context");
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
+                .HasDefaultValueSql("(getutcdate())")
                 .HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.EntityId).HasColumnName("entity_id");
             entity.Property(e => e.EntityType)
                 .HasMaxLength(50)
                 .HasColumnName("entity_type");
+            entity.Property(e => e.EntityTypeAr)
+                .HasMaxLength(50)
+                .HasColumnName("entity_type_ar");
             entity.Property(e => e.IpAddress)
                 .HasMaxLength(45)
                 .HasColumnName("ip_address");
@@ -296,6 +299,12 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.OldValues).HasColumnName("old_values");
             entity.Property(e => e.UserAgent).HasColumnName("user_agent");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.UserType)
+                .HasMaxLength(20)
+                .HasColumnName("user_type");
+            entity.Property(e => e.UserName)
+                .HasMaxLength(100)
+                .HasColumnName("user_name");
         });
 
         modelBuilder.Entity<Notification>(entity =>

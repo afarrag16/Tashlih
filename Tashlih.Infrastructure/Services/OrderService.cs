@@ -14,13 +14,14 @@ public class OrderService : IOrderService
     private readonly IOrderHubService _orderHubService;
     private readonly INotificationService _notificationService;
     private readonly string _baseUrl;
-
-    public OrderService(TashlihContext context, IOrderHubService orderHubService, INotificationService notificationService, IConfiguration configuration)
+    private readonly ILogService _logService;
+    public OrderService(TashlihContext context, IOrderHubService orderHubService, INotificationService notificationService, IConfiguration configuration, ILogService logService)
     {
         _context = context;
         _orderHubService = orderHubService;
         _notificationService = notificationService;
         _baseUrl = configuration["AppSettings:BaseUrl"] ?? "";
+        _logService = logService;
     }
 
     #region Customer Methods
@@ -307,7 +308,6 @@ public class OrderService : IOrderService
     public async Task<OrderResponse> CancelOrderAsync(long customerId, long orderId, CancelOrderRequest request)
     {
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.CustomerId == customerId);
-
         if (order == null)
         {
             return new OrderResponse
@@ -329,6 +329,8 @@ public class OrderService : IOrderService
             };
         }
 
+        var oldStatus = order.Status;
+
         // تحديث الحالة
         order.Status = OrderStatus.Cancelled;
         order.CancelledAt = DateTime.UtcNow;
@@ -337,6 +339,22 @@ public class OrderService : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        var customer = await _context.Users.FindAsync(customerId);
+        await _logService.LogAsync(
+            userId: customerId,
+            userType: "customer",
+            userName: customer?.FullName ?? "عميل",
+            action: "cancel",
+            actionAr: "إلغاء",
+            entityType: "order",
+            entityTypeAr: "طلب",
+            entityId: order.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = order.Status, CancelReason = request.CancelReason },
+            description: $"تم إلغاء الطلب رقم {order.OrderNumber} بواسطة العميل"
+        );
 
         // إرسال إشعار للمورد ✅
         await _notificationService.SendOrderNotificationAsync(order.Id, NotificationTypes.OrderCancelled);
@@ -548,7 +566,6 @@ public class OrderService : IOrderService
     public async Task<OrderResponse> RejectOrderAsync(long supplierId, long orderId, RejectOrderRequest request)
     {
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.SupplierId == supplierId);
-
         if (order == null)
         {
             return new OrderResponse
@@ -570,6 +587,8 @@ public class OrderService : IOrderService
             };
         }
 
+        var oldStatus = order.Status;
+
         // تحديث الحالة
         order.Status = OrderStatus.Rejected;
         order.CancelledAt = DateTime.UtcNow;
@@ -578,6 +597,22 @@ public class OrderService : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        // ✅ تسجيل العملية
+        var supplier = await _context.SupplierProfiles.FindAsync(supplierId);
+        await _logService.LogAsync(
+            userId: supplierId,
+            userType: "supplier",
+            userName: supplier?.FullName ?? "مورد",
+            action: "reject",
+            actionAr: "رفض",
+            entityType: "order",
+            entityTypeAr: "طلب",
+            entityId: order.Id,
+            oldValues: new { Status = oldStatus },
+            newValues: new { Status = order.Status, RejectReason = request.RejectReason },
+            description: $"تم رفض الطلب رقم {order.OrderNumber} بواسطة المورد"
+        );
 
         // إرسال إشعار للعميل ✅
         await _notificationService.SendOrderNotificationAsync(order.Id, NotificationTypes.OrderRejected);

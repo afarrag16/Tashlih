@@ -14,11 +14,12 @@ namespace Tashlih.Infrastructure.Services
     {
         private readonly TashlihContext _context;
         private readonly IFileService _fileService;
-
-        public PartsService(TashlihContext context, IFileService fileService)
+        private readonly ILogService _logService;
+        public PartsService(TashlihContext context, IFileService fileService, ILogService logService)
         {
             _context = context;
             _fileService = fileService;
+            _logService = logService;
         }
 
         #region Supplier Methods
@@ -205,6 +206,9 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
+            // حفظ السعر القديم للـ Log
+            var oldPrice = part.Price;
+
             // تحديث الحقول
             if (request.NameAr != null) part.NameAr = request.NameAr;
             if (request.NameEn != null) part.NameEn = request.NameEn;
@@ -239,6 +243,25 @@ namespace Tashlih.Infrastructure.Services
             part.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // ✅ تسجيل تغيير السعر فقط
+            if (request.Price.HasValue && oldPrice != request.Price.Value)
+            {
+                var supplier = await _context.SupplierProfiles.FindAsync(supplierId);
+                await _logService.LogAsync(
+                    userId: supplierId,
+                    userType: "supplier",
+                    userName: supplier?.FullName ?? "مورد",
+                    action: "price_change",
+                    actionAr: "تغيير سعر",
+                    entityType: "part",
+                    entityTypeAr: "قطعة",
+                    entityId: part.Id,
+                    oldValues: new { Price = oldPrice },
+                    newValues: new { Price = part.Price },
+                    description: $"تم تغيير سعر القطعة '{part.NameAr}' من {oldPrice} إلى {part.Price} ريال"
+                );
+            }
 
             var partView = await _context.VPartsDetaileds
                 .FirstOrDefaultAsync(p => p.Id == part.Id);
@@ -275,10 +298,29 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
+            var partName = part.NameAr;
+            var oldStatus = part.Status;
+
             part.DeletedAt = DateTime.UtcNow;
             part.Status = "deleted";
 
             await _context.SaveChangesAsync();
+
+            // ✅ تسجيل العملية
+            var supplier = await _context.SupplierProfiles.FindAsync(supplierId);
+            await _logService.LogAsync(
+                userId: supplierId,
+                userType: "supplier",
+                userName: supplier?.FullName ?? "مورد",
+                action: "delete",
+                actionAr: "حذف",
+                entityType: "part",
+                entityTypeAr: "قطعة",
+                entityId: partId,
+                oldValues: new { Status = oldStatus, Name = partName },
+                newValues: new { Status = "deleted" },
+                description: $"تم حذف القطعة: {partName}"
+            );
 
             return new PartResponse
             {

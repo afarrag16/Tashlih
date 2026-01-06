@@ -371,6 +371,81 @@ public class SuppliersService : ISuppliersService
         };
     }
 
+    /// <summary>
+    /// البحث عن الموردين بالاسم والمدينة
+    /// </summary>
+    public async Task<SuppliersSearchResponse> SearchSuppliersAsync(SuppliersSearchRequest request)
+    {
+        var query = _context.SupplierProfiles
+            .Where(s => s.IsVerified && s.Status == "active" && s.DeletedAt == null);
+
+        // البحث بالاسم
+        // البحث باسم المؤسسة
+        if (!string.IsNullOrEmpty(request.Search))
+        {
+            var search = request.Search.ToLower();
+            query = query.Where(s =>
+                (s.BusinessNameAr != null && s.BusinessNameAr.ToLower().Contains(search)) ||
+                (s.BusinessNameEn != null && s.BusinessNameEn.ToLower().Contains(search)));
+        }
+
+        // فلترة بالمدينة
+        if (!string.IsNullOrEmpty(request.City))
+        {
+            query = query.Where(s => s.City == request.City);
+        }
+
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)request.PageSize);
+
+        var suppliers = await query
+            .OrderByDescending(s => s.RatingAverage)
+            .ThenByDescending(s => s.CompletedOrders)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
+        // جلب عدد القطع لكل مورد
+        var supplierIds = suppliers.Select(s => s.Id).ToList();
+        var partsCounts = await _context.Parts
+            .Where(p => supplierIds.Contains(p.SupplierId) && p.DeletedAt == null && p.Status == "available")
+            .GroupBy(p => p.SupplierId)
+            .Select(g => new { SupplierId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.SupplierId, x => x.Count);
+
+        var suppliersDto = suppliers.Select(s => new SupplierListDto
+        {
+            Id = s.Id,
+            BusinessNameAr = s.BusinessNameAr,
+            BusinessNameEn = s.BusinessNameEn,
+            LogoUrl = s.LogoUrl,
+            City = s.City,
+            District = s.District,
+            IsVerified = s.IsVerified,
+            RatingAverage = s.RatingAverage,
+            RatingCount = s.RatingCount,
+            PartsCount = partsCounts.GetValueOrDefault(s.Id, 0)
+        }).ToList();
+
+        return new SuppliersSearchResponse
+        {
+            Success = true,
+            Message = suppliersDto.Any() ? null : "No suppliers found",
+            MessageAr = suppliersDto.Any() ? null : "لا يوجد موردين",
+            Suppliers = suppliersDto,
+            TotalCount = totalItems,
+            Pagination = new Tashlih.Application.DTOs.Suppliers.PaginationInfo
+            {
+                CurrentPage = request.Page,
+                PageSize = request.PageSize,
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                HasNext = request.Page < totalPages,
+                HasPrevious = request.Page > 1
+            }
+        };
+    }
+
     #region Helper Methods
 
     /// <summary>
