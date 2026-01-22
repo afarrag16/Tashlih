@@ -28,6 +28,7 @@ public class SendMessageRequest
     /// <summary>
     /// النص (اختياري)
     /// </summary>
+    public long? PartId { get; set; }
     public string? Content { get; set; }
 
     /// <summary>
@@ -163,6 +164,7 @@ public class ChatMessageDto
     public DateTime? ReadAt { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<ChatAttachmentDto>? Attachments { get; set; }
+    public ChatPartDto? Part { get; set; }
 }
 
 /// <summary>

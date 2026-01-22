@@ -353,6 +353,9 @@ public class NotificationService : INotificationService
 
     public async Task SendChatNotificationAsync(long chatThreadId, long senderId, string senderName, string messagePreview)
     {
+
+
+
         var chat = await _context.ChatThreads
             .FirstOrDefaultAsync(c => c.Id == chatThreadId);
 
@@ -392,7 +395,8 @@ public class NotificationService : INotificationService
             {
                 { "chatThreadId", chatThreadId },
                 { "senderId", senderId }
-            }
+            },
+            Priority = "high"
         });
     }
 
@@ -413,7 +417,8 @@ public class NotificationService : INotificationService
             {
                 { "reviewId", reviewId },
                 { "rating", rating }
-            }
+            },
+            Priority = "high"
         });
     }
 

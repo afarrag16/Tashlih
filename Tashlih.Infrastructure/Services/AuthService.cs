@@ -144,21 +144,20 @@ namespace Tashlih.Infrastructure.Services
 
             try
             {
-                var crImageUrl = await _fileService.UploadFileAsync(
-                    request.CommercialRegisterImage,
-                    "suppliers/commercial-register"
-                );
+                var crImageUrl = await _fileService.UploadDocumentAsync(
+                                request.CommercialRegisterImage,
+                              "suppliers/commercial-register"
+                                    );
 
-                var idImageUrl = await _fileService.UploadFileAsync(
+                var idImageUrl = await _fileService.UploadDocumentAsync(
                     request.IdentityImage,
                     "suppliers/identity"
                 );
 
-                // ✅ رفع اللوقو إن وجد
                 string? logoUrl = null;
                 if (request.Logo != null)
                 {
-                    logoUrl = await _fileService.UploadFileAsync(
+                    logoUrl = await _fileService.UploadImageAsync(
                         request.Logo,
                         "suppliers/logos"
                     );
@@ -179,9 +178,9 @@ namespace Tashlih.Infrastructure.Services
                     CommercialRegister = request.CommercialRegisterNumber,
                     CommercialRegisterImageUrl = crImageUrl,
                     IdFrontUrl = idImageUrl,
-                    LogoUrl = logoUrl,                    // ✅ جديد
-                    Latitude = request.Latitude,          // ✅ جديد
-                    Longitude = request.Longitude,        // ✅ جديد
+                    LogoUrl = logoUrl,                    
+                    Latitude = request.Latitude,          
+                    Longitude = request.Longitude,        
                     Status = "active",
                     VerificationStatus = "pending_review",
                     VerificationSubmittedAt = DateTime.UtcNow,
@@ -697,6 +696,8 @@ namespace Tashlih.Infrastructure.Services
 
         private async Task<AuthResponse> CreateCustomerAuthResponseAsync(User user, string? deviceType, string? deviceName, string? fcmToken)
         {
+
+          
             var accessToken = _jwtService.GenerateAccessToken(user);
             var expiryMinutes = _configuration.GetValue<int>("Jwt:ExpiryMinutes", 1440);
             var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
@@ -707,7 +708,7 @@ namespace Tashlih.Infrastructure.Services
                 Token = accessToken,
                 DeviceType = deviceType,
                 DeviceName = deviceName,
-                FcmToken = fcmToken,
+                FcmToken = IsValidFcmToken(fcmToken) ? fcmToken : null,
                 ExpiresAt = expiresAt,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -760,7 +761,7 @@ namespace Tashlih.Infrastructure.Services
                 Token = accessToken,
                 DeviceType = deviceType,
                 DeviceName = deviceName,
-                FcmToken = fcmToken,
+                FcmToken = IsValidFcmToken(fcmToken) ? fcmToken : null,
                 ExpiresAt = expiresAt,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -800,6 +801,14 @@ namespace Tashlih.Infrastructure.Services
         private string GenerateOtp()
         {
             return Random.Shared.Next(1000, 9999).ToString();
+        }
+
+
+        private bool IsValidFcmToken(string? token)
+        {
+            return !string.IsNullOrWhiteSpace(token)
+                && token != "string"
+                && token.Length >= 50;
         }
 
 

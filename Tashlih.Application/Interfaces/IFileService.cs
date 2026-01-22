@@ -12,6 +12,9 @@ namespace Tashlih.Application.Interfaces
         /// <param name="folder">المجلد الفرعي (مثل: suppliers/identity)</param>
         /// <returns>URL الملف</returns>
         Task<string> UploadFileAsync(IFormFile file, string folder);
+        Task<string> UploadDocumentAsync(IFormFile file, string folder);
+        Task<string> UploadImageAsync(IFormFile file, string folder);
+        Task<string> UploadMediaAsync(IFormFile file, string folder);
 
         /// <summary>
         /// حذف ملف

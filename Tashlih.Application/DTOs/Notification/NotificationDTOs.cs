@@ -107,4 +107,11 @@ public static class NotificationTypes
     // System
     public const string System = "system";
     public const string Promotion = "promotion";
+
+    // Payment & Subscription
+    public const string PaymentSuccess = "payment_success";
+    public const string PaymentFailed = "payment_failed";
+    public const string SubscriptionActivated = "subscription_activated";
+    public const string SubscriptionExpiringSoon = "subscription_expiring_soon";
+    public const string SubscriptionExpired = "subscription_expired";
 }

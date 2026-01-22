@@ -44,9 +44,9 @@ namespace Tashlih.Api
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    Title = "Tashlih API",
+                    Title = "ALTASHALIH API",
                     Version = "v1",
-                    Description = "API for Tashlih Auto Parts Platform"
+                    Description = "API for Altashalih Auto Parts Platform"
                 });
 
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -156,27 +156,39 @@ namespace Tashlih.Api
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<ILogService, LogService>();
             builder.Services.AddScoped<AdminLogsService>();
+            builder.Services.AddHttpClient<IPaymentService, PaymentService>();
 
             #endregion
 
             #region SignalR Services
+            //builder.Services.AddCors(options =>
+            //{
+            //    options.AddPolicy("AllowAll", policy =>
+            //    {
+            //        policy
+            //            .SetIsOriginAllowed(_ => true)  // يسمح لأي domain
+            //            .AllowAnyHeader()
+            //            .AllowAnyMethod()
+            //            .AllowCredentials();  // ✅ مهم للـ SignalR
+            //    });
+            //});
+
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll", policy =>
+                options.AddPolicy("SignalRPolicy", policy =>
                 {
-                    policy
-                        .SetIsOriginAllowed(_ => true)  // يسمح لأي domain
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();  // ✅ مهم للـ SignalR
+                    policy.WithOrigins("https://altashalih.app") // ضع دومين الموقع هنا
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials(); // ضروري جداً
                 });
             });
 
-           
 
-           
 
-           
+
+
+
             #endregion
             // SignalR
             builder.Services.AddSignalR();
@@ -204,7 +216,7 @@ namespace Tashlih.Api
                     opt.PermitLimit = 5;
                     opt.Window = TimeSpan.FromMinutes(15);
                     opt.AutoReplenishment = true;
-                });
+                }); 
 
                 // 3️⃣ حد إرسال OTP - 3 مرات / 10 دقائق
                 options.AddFixedWindowLimiter("otp", opt =>
@@ -242,7 +254,8 @@ namespace Tashlih.Api
 
             #endregion
 
-            app.UseCors("AllowAll");  // CORS 
+            // app.UseCors("AllowAll");  // CORS 
+            app.UseCors("SignalRPolicy");
 
             app.UseSwagger();
             app.UseSwaggerUI();
@@ -257,11 +270,12 @@ namespace Tashlih.Api
             app.MapControllers();
 
             //// تبع عماد يونس
-            //app.UseDefaultFiles();
-            //app.UseStaticFiles();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
 
             // SignalR Hub
             app.MapHub<ChatHub>("/chathub");
+            
 
             app.Run();
         }

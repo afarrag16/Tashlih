@@ -118,6 +118,8 @@ public class FavoritesService : IFavoritesService
     {
         var favorites = await _context.FavoriteParts
             .Where(f => f.CustomerId == customerId)
+             .Include(f => f.Part)
+              .ThenInclude(p => p.Category)
             .Include(f => f.Part)
                 .ThenInclude(p => p.Supplier)
             .Include(f => f.Part)
@@ -140,6 +142,9 @@ public class FavoritesService : IFavoritesService
                 ConditionAr = GetConditionAr(f.Part.Condition),
                 SupplierId = f.Part.SupplierId,
                 SupplierName = f.Part.Supplier?.BusinessNameAr,
+                CategoryName = f.Part.Category?.NameAr,
+                CategoryNameEn = f.Part.Category?.NameEn,
+                Quantity = f.Part.Quantity,
                 City = f.Part.Supplier?.City,
                 IsAvailable = f.Part.Status == "available" && f.Part.Quantity > 0,
                 HasWarranty = f.Part.WarrantyDays > 0,
@@ -280,6 +285,7 @@ public class FavoritesService : IFavoritesService
                 Id = f.Id,
                 SupplierId = f.SupplierId,
                 SupplierName = f.Supplier.BusinessNameAr,
+                BusinessType = f.Supplier.BusinessType,
                 SupplierLogo = GetFullUrl(f.Supplier.LogoUrl),
                 City = f.Supplier.City,
                 District = f.Supplier.District,

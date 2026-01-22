@@ -58,6 +58,8 @@ public class FirebasePushService : IFirebasePushService
 
     public async Task<bool> SendToUserAsync(long userId, string userType, string title, string body, Dictionary<string, string>? data = null)
     {
+      
+       
         if (!_isInitialized)
         {
             _logger.LogWarning("Firebase not initialized, skipping push notification");
@@ -66,7 +68,6 @@ public class FirebasePushService : IFirebasePushService
 
         try
         {
-            // جلب FCM Token من الـ Session
             string? fcmToken = null;
 
             if (userType == "supplier")
@@ -77,6 +78,7 @@ public class FirebasePushService : IFirebasePushService
                     .FirstOrDefaultAsync();
 
                 fcmToken = session?.FcmToken;
+                
             }
             else
             {
@@ -86,7 +88,10 @@ public class FirebasePushService : IFirebasePushService
                     .FirstOrDefaultAsync();
 
                 fcmToken = session?.FcmToken;
+                
             }
+
+           
 
             if (string.IsNullOrEmpty(fcmToken))
             {
@@ -98,6 +103,7 @@ public class FirebasePushService : IFirebasePushService
         }
         catch (Exception ex)
         {
+           
             _logger.LogError(ex, "Error sending push notification to user {UserId}", userId);
             return false;
         }

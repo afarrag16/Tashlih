@@ -31,6 +31,13 @@ public interface IChatService
     /// </summary>
     Task<SendMessageResponse> SendMessageAsync(long userId, string userType, long threadId, SendMessageRequest request);
 
+    Task<SendMessageResponse> SendMessageWithPartPublicAsync(
+    long userId,
+    string userType,
+    long threadId,
+    SendMessageRequest request
+);
+
     /// <summary>
     /// تعليم المحادثة كمقروءة
     /// </summary>

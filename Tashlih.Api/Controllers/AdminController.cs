@@ -20,6 +20,7 @@ public class AdminController : ControllerBase
     private readonly AdminCustomerService _customerService;
     private readonly AdminDashboardService _dashboardService;
     private readonly AdminLogsService _logsService;
+    private readonly IPaymentService _paymentService;
 
 
     public AdminController(IAdminAuthService adminAuthService,
@@ -27,7 +28,8 @@ public class AdminController : ControllerBase
         AdminSupplierService supplierService,
         AdminCustomerService customerService,
         AdminDashboardService dashboardService,
-        AdminLogsService logsService)
+        AdminLogsService logsService,
+        IPaymentService paymentService)
     {
         _adminAuthService = adminAuthService;
         _subscriptionService = subscriptionService;
@@ -35,6 +37,7 @@ public class AdminController : ControllerBase
         _customerService = customerService;
         _dashboardService = dashboardService;
         _logsService = logsService;
+        _paymentService = paymentService;
     }
 
     #region المصادقة
@@ -201,7 +204,7 @@ public class AdminController : ControllerBase
         var result = await _supplierService.GetAllSuppliersAsync(request);
         return Ok(result);
     }
-
+       
     /// <summary>
     /// تفاصيل مورد
     /// </summary>
@@ -217,6 +220,30 @@ public class AdminController : ControllerBase
         if (!result.Success)
             return NotFound(result);
 
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// كل المدفوعات (للأدمن)
+    /// </summary>
+    
+    [HttpGet("payments")]
+    [Authorize]
+    public async Task<IActionResult> GetAllPayments([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? status = null)
+    {
+        var result = await _paymentService.GetAllPaymentsAsync(page, pageSize, status);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// مدفوعات مورد معين (للأدمن)
+    /// </summary>
+    
+    [HttpGet("payments/supplier/{supplierId}")]
+    [Authorize]
+    public async Task<IActionResult> GetSupplierPayments(long supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var result = await _paymentService.GetSupplierPaymentsAsync(supplierId, page, pageSize);
         return Ok(result);
     }
 

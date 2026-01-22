@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Tashlih.Application.DTOs.Chat;
+using Tashlih.Application.DTOs.Notification;
 using Tashlih.Application.Interfaces;
 using Tashlih.Core.Entities;
 using Tashlih.Infrastructure.Models;
@@ -12,17 +14,18 @@ public class ChatService : IChatService
     private readonly TashlihContext _context;
     private readonly IFileService _fileService;
     private readonly IChatHubService _chatHubService;
-
+    private readonly INotificationService _notificationService;
     // حدود الملفات
     private const int MaxImageSize = 5 * 1024 * 1024;      // 5MB
-    private const int MaxVideoSize = 50 * 1024 * 1024;     // 50MB
+    private const int MaxVideoSize = 100 * 1024 * 1024;     // 100MB
     private const int MaxVoiceSize = 10 * 1024 * 1024;     // 10MB
 
-    public ChatService(TashlihContext context, IFileService fileService, IChatHubService chatHubService)
+    public ChatService(TashlihContext context, IFileService fileService, IChatHubService chatHubService, INotificationService notificationService)
     {
         _context = context;
         _fileService = fileService;
         _chatHubService = chatHubService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -67,11 +70,19 @@ public class ChatService : IChatService
         var existingThread = await _context.ChatThreads
             .FirstOrDefaultAsync(t => t.CustomerId == customerId
                 && t.SupplierId == request.SupplierId
-                && t.PartId == request.PartId
+               // && t.PartId == request.PartId
                 && t.Status == "active");
 
         if (existingThread != null)
         {
+            // ✅ اختياري: تحديث PartId إذا كان null والمستخدم أرسل قطعة جديدة
+            if (existingThread.PartId == null && request.PartId.HasValue)
+            {
+                existingThread.PartId = request.PartId;
+                existingThread.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+
             // إرسال الرسالة في المحادثة الموجودة لو في محتوى
             if (!string.IsNullOrWhiteSpace(request.Content) ||
                 (request.Images != null && request.Images.Count > 0) ||
@@ -86,7 +97,8 @@ public class ChatService : IChatService
                     Voice = request.Voice
                 };
 
-                await SendMessageAsync(customerId, "customer", existingThread.Id, existingSendRequest);
+                // await SendMessageAsync(customerId, "customer", existingThread.Id, existingSendRequest);
+                await SendMessageWithPartAsync(customerId, "customer", existingThread.Id, existingSendRequest, request.PartId);
             }
 
             return new StartChatResponse
@@ -141,7 +153,8 @@ public class ChatService : IChatService
             Voice = request.Voice
         };
 
-        await SendMessageAsync(customerId, "customer", thread.Id, newSendRequest);
+        // await SendMessageAsync(customerId, "customer", thread.Id, newSendRequest);
+        await SendMessageWithPartAsync(customerId, "customer", thread.Id, newSendRequest, request.PartId);
 
         return new StartChatResponse
         {
@@ -155,35 +168,108 @@ public class ChatService : IChatService
     /// <summary>
     /// جلب محادثات العميل
     /// </summary>
+    
     public async Task<ChatThreadsResponse> GetCustomerThreadsAsync(long customerId)
     {
+        // 1) جلب محادثات العميل (بدون Include للـ Part لأننا هنعتمد على آخر Part من الرسائل)
         var threads = await _context.ChatThreads
             .Include(t => t.Supplier)
-            .Include(t => t.Part)
-                .ThenInclude(p => p!.PartImages.Where(i => i.IsPrimary))
             .Where(t => t.CustomerId == customerId && t.Status == "active")
             .OrderByDescending(t => t.LastMessageAt ?? t.CreatedAt)
             .ToListAsync();
 
-        var threadDtos = threads.Select(t => new ChatThreadListDto
+        if (!threads.Any())
         {
-            Id = t.Id,
-            OtherUserId = t.SupplierId,
-            OtherUserName = t.Supplier.BusinessNameAr,
-            OtherUserImage = t.Supplier.LogoUrl,
-            LastMessage = t.LastMessage,
-            LastMessageAt = t.LastMessageAt,
-            UnreadCount = t.CustomerUnreadCount,
-            Part = t.Part != null ? new ChatPartDto
+            return new ChatThreadsResponse
             {
-                Id = t.Part.Id,
-                NameAr = t.Part.NameAr,
-                NameEn = t.Part.NameEn,
-                Price = t.Part.Price,
-                ImageUrl = t.Part.PartImages.FirstOrDefault()?.ImageUrl,
-                Status = t.Part.Status
-            } : null,
-            Status = t.Status
+                Success = true,
+                Threads = new List<ChatThreadListDto>()
+            };
+        }
+
+        var threadIds = threads.Select(t => t.Id).ToList();
+
+        // 2) جلب آخر Messages التي تحتوي على PartId داخل Metadata لكل Thread (الأحدث أولاً)
+        var latestPartMeta = await _context.ChatMessages
+            .Where(m =>
+                threadIds.Contains(m.ThreadId) &&
+                !m.IsDeleted &&
+                m.Metadata != null &&
+                m.Metadata.Contains("PartId"))
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new { m.ThreadId, m.Metadata })
+            .ToListAsync();
+
+        // 3) استخراج آخر PartId لكل Thread
+        var threadLastPartId = new Dictionary<long, long>();
+
+        foreach (var item in latestPartMeta)
+        {
+            // بما إننا مرتبين Desc، أول مرة نشوف ThreadId يبقى ده آخر Part
+            if (threadLastPartId.ContainsKey(item.ThreadId))
+                continue;
+
+            try
+            {
+                var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(item.Metadata!);
+                if (metadata != null && metadata.ContainsKey("PartId"))
+                {
+                    var pid = Convert.ToInt64(metadata["PartId"]?.ToString());
+                    threadLastPartId[item.ThreadId] = pid;
+                }
+            }
+            catch
+            {
+                // تجاهل أي Metadata غير صالحة
+            }
+        }
+
+        var partIds = threadLastPartId.Values.Distinct().ToList();
+
+        // 4) جلب القطع المطلوبة مرة واحدة
+        Dictionary<long, Part> partsDict = new Dictionary<long, Part>();
+
+        if (partIds.Any())
+        {
+            var partsFromDb = await _context.Parts
+                .Include(p => p.PartImages.Where(i => i.IsPrimary))
+                .Where(p => partIds.Contains(p.Id) && p.DeletedAt == null)
+                .ToListAsync();
+
+            partsDict = partsFromDb.ToDictionary(p => p.Id, p => p);
+        }
+
+        // 5) بناء DTOs
+        var threadDtos = threads.Select(t =>
+        {
+            ChatPartDto? partDto = null;
+
+            if (threadLastPartId.TryGetValue(t.Id, out var lastPartId) &&
+                partsDict.TryGetValue(lastPartId, out var part))
+            {
+                partDto = new ChatPartDto
+                {
+                    Id = part.Id,
+                    NameAr = part.NameAr,
+                    NameEn = part.NameEn,
+                    Price = part.Price,
+                    ImageUrl = part.PartImages.FirstOrDefault()?.ImageUrl,
+                    Status = part.Status
+                };
+            }
+
+            return new ChatThreadListDto
+            {
+                Id = t.Id,
+                OtherUserId = t.SupplierId,
+                OtherUserName = t.Supplier.BusinessNameAr,
+                OtherUserImage = t.Supplier.LogoUrl,
+                LastMessage = t.LastMessage,
+                LastMessageAt = t.LastMessageAt,
+                UnreadCount = t.CustomerUnreadCount,
+                Part = partDto, // ✅ آخر قطعة اتكلموا عليها
+                Status = t.Status
+            };
         }).ToList();
 
         return new ChatThreadsResponse
@@ -192,39 +278,114 @@ public class ChatService : IChatService
             Threads = threadDtos
         };
     }
+
 
     /// <summary>
     /// جلب محادثات المورد
     /// </summary>
+  
+
     public async Task<ChatThreadsResponse> GetSupplierThreadsAsync(long supplierId)
     {
+        // 1) جلب محادثات المورد (بدون Include للـ Part لأننا هنعتمد على آخر Part من الرسائل)
         var threads = await _context.ChatThreads
             .Include(t => t.Customer)
-            .Include(t => t.Part)
-                .ThenInclude(p => p!.PartImages.Where(i => i.IsPrimary))
             .Where(t => t.SupplierId == supplierId && t.Status == "active")
             .OrderByDescending(t => t.LastMessageAt ?? t.CreatedAt)
             .ToListAsync();
 
-        var threadDtos = threads.Select(t => new ChatThreadListDto
+        if (!threads.Any())
         {
-            Id = t.Id,
-            OtherUserId = t.CustomerId,
-            OtherUserName = t.Customer.FullName,
-            OtherUserImage = t.Customer.AvatarUrl,
-            LastMessage = t.LastMessage,
-            LastMessageAt = t.LastMessageAt,
-            UnreadCount = t.SupplierUnreadCount,
-            Part = t.Part != null ? new ChatPartDto
+            return new ChatThreadsResponse
             {
-                Id = t.Part.Id,
-                NameAr = t.Part.NameAr,
-                NameEn = t.Part.NameEn,
-                Price = t.Part.Price,
-                ImageUrl = t.Part.PartImages.FirstOrDefault()?.ImageUrl,
-                Status = t.Part.Status
-            } : null,
-            Status = t.Status
+                Success = true,
+                Threads = new List<ChatThreadListDto>()
+            };
+        }
+
+        var threadIds = threads.Select(t => t.Id).ToList();
+
+        // 2) جلب آخر Messages التي تحتوي على PartId داخل Metadata لكل Thread (الأحدث أولاً)
+        var latestPartMeta = await _context.ChatMessages
+            .Where(m =>
+                threadIds.Contains(m.ThreadId) &&
+                !m.IsDeleted &&
+                m.Metadata != null &&
+                m.Metadata.Contains("PartId"))
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new { m.ThreadId, m.Metadata })
+            .ToListAsync();
+
+        // 3) استخراج آخر PartId لكل Thread
+        var threadLastPartId = new Dictionary<long, long>();
+
+        foreach (var item in latestPartMeta)
+        {
+            // بما إننا مرتبين Desc، أول مرة نشوف ThreadId يبقى ده آخر Part
+            if (threadLastPartId.ContainsKey(item.ThreadId))
+                continue;
+
+            try
+            {
+                var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(item.Metadata!);
+                if (metadata != null && metadata.ContainsKey("PartId"))
+                {
+                    var pid = Convert.ToInt64(metadata["PartId"]?.ToString());
+                    threadLastPartId[item.ThreadId] = pid;
+                }
+            }
+            catch
+            {
+                // تجاهل أي Metadata غير صالحة
+            }
+        }
+
+        var partIds = threadLastPartId.Values.Distinct().ToList();
+
+        // 4) جلب القطع المطلوبة مرة واحدة
+        Dictionary<long, Part> partsDict = new Dictionary<long, Part>();
+
+        if (partIds.Any())
+        {
+            var partsFromDb = await _context.Parts
+                .Include(p => p.PartImages.Where(i => i.IsPrimary))
+                .Where(p => partIds.Contains(p.Id) && p.DeletedAt == null)
+                .ToListAsync();
+
+            partsDict = partsFromDb.ToDictionary(p => p.Id, p => p);
+        }
+
+        // 5) بناء DTOs
+        var threadDtos = threads.Select(t =>
+        {
+            ChatPartDto? partDto = null;
+
+            if (threadLastPartId.TryGetValue(t.Id, out var lastPartId) &&
+                partsDict.TryGetValue(lastPartId, out var part))
+            {
+                partDto = new ChatPartDto
+                {
+                    Id = part.Id,
+                    NameAr = part.NameAr,
+                    NameEn = part.NameEn,
+                    Price = part.Price,
+                    ImageUrl = part.PartImages.FirstOrDefault()?.ImageUrl,
+                    Status = part.Status
+                };
+            }
+
+            return new ChatThreadListDto
+            {
+                Id = t.Id,
+                OtherUserId = t.CustomerId,
+                OtherUserName = t.Customer.FullName,
+                OtherUserImage = t.Customer.AvatarUrl,
+                LastMessage = t.LastMessage,
+                LastMessageAt = t.LastMessageAt,
+                UnreadCount = t.SupplierUnreadCount,
+                Part = partDto, // ✅ آخر قطعة
+                Status = t.Status
+            };
         }).ToList();
 
         return new ChatThreadsResponse
@@ -233,6 +394,7 @@ public class ChatService : IChatService
             Threads = threadDtos
         };
     }
+
 
     /// <summary>
     /// جلب رسائل محادثة مع Pagination
@@ -284,28 +446,92 @@ public class ChatService : IChatService
             .OrderBy(m => m.CreatedAt)  // نرجعهم بالترتيب الصحيح
             .ToListAsync();
 
-        var messageDtos = messages.Select(m => new ChatMessageDto
+        // أولاً: جمع IDs القطع من Metadata
+        var partIds = new List<long>();
+        foreach (var msg in messages)
         {
-            Id = m.Id,
-            SenderId = m.SenderId,
-            SenderType = m.SenderType,
-            MessageType = m.MessageType,
-            Content = m.Content,
-            IsRead = m.IsRead,
-            ReadAt = m.ReadAt,
-            CreatedAt = m.CreatedAt,
-            Attachments = m.ChatAttachments.Select(a => new ChatAttachmentDto
+            if (!string.IsNullOrEmpty(msg.Metadata))
             {
-                Id = a.Id,
-                FileType = a.FileType,
-                FileUrl = a.FileUrl,
-                FileName = a.FileName,
-                FileSize = a.FileSize,
-                ThumbnailUrl = a.ThumbnailUrl,
-                Width = a.Width,
-                Height = a.Height,
-                Duration = a.Duration
-            }).ToList()
+                try
+                {
+                    var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(msg.Metadata);
+                    if (metadata != null && metadata.ContainsKey("PartId"))
+                    {
+                        var partId = Convert.ToInt64(metadata["PartId"].ToString());
+                        if (!partIds.Contains(partId))
+                            partIds.Add(partId);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        // ثانياً: جلب القطع من Database
+        var parts = new Dictionary<long, Part>();
+        if (partIds.Any())
+        {
+            var partsFromDb = await _context.Parts
+                .Include(p => p.PartImages.Where(i => i.IsPrimary))
+                .Where(p => partIds.Contains(p.Id))
+                .ToListAsync();
+
+            parts = partsFromDb.ToDictionary(p => p.Id);
+        }
+
+        // ثالثاً: بناء DTOs مع معلومات القطع
+        var messageDtos = messages.Select(m =>
+        {
+            var dto = new ChatMessageDto
+            {
+                Id = m.Id,
+                SenderId = m.SenderId,
+                SenderType = m.SenderType,
+                MessageType = m.MessageType,
+                Content = m.Content,
+                IsRead = m.IsRead,
+                ReadAt = m.ReadAt,
+                CreatedAt = m.CreatedAt,
+                Attachments = m.ChatAttachments.Select(a => new ChatAttachmentDto
+                {
+                    Id = a.Id,
+                    FileType = a.FileType,
+                    FileUrl = a.FileUrl,
+                    FileName = a.FileName,
+                    FileSize = a.FileSize,
+                    ThumbnailUrl = a.ThumbnailUrl,
+                    Width = a.Width,
+                    Height = a.Height,
+                    Duration = a.Duration
+                }).ToList()
+            };
+
+            // إضافة معلومات القطعة من Metadata
+            if (!string.IsNullOrEmpty(m.Metadata))
+            {
+                try
+                {
+                    var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(m.Metadata);
+                    if (metadata != null && metadata.ContainsKey("PartId"))
+                    {
+                        var partId = Convert.ToInt64(metadata["PartId"].ToString());
+                        if (parts.TryGetValue(partId, out var part))
+                        {
+                            dto.Part = new ChatPartDto
+                            {
+                                Id = part.Id,
+                                NameAr = part.NameAr,
+                                NameEn = part.NameEn,
+                                Price = part.Price,
+                                ImageUrl = part.PartImages.FirstOrDefault()?.ImageUrl,
+                                Status = part.Status
+                            };
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            return dto;
         }).ToList();
 
         var threadDto = new ChatThreadDto
@@ -342,7 +568,7 @@ public class ChatService : IChatService
                 TotalCount = totalCount
             }
         };
-    }   
+    }
 
     /// <summary>
     /// إرسال رسالة (نص و/أو صور و/أو فيديوهات و/أو صوت)
@@ -499,12 +725,30 @@ public class ChatService : IChatService
             }).ToList()
         };
 
+       
+
         // ✅ SignalR: إرسال للطرف الآخر
         var recipientId = userType == "customer" ? thread.SupplierId : thread.CustomerId;
         await _chatHubService.SendNewMessageAsync(recipientId, threadId, messageDto);
 
         // ✅ SignalR: إرسال لكل المتصلين بالمحادثة (تأكيد الاستلام)
         await _chatHubService.SendMessageReceivedAsync(threadId, message.Id, userId, userType);
+
+      
+
+        // ✅ Push Notification: إرسال إشعار للطرف الآخر
+        var senderName = userType == "customer"
+            ? (await _context.Users.FindAsync(userId))?.FullName ?? "عميل"
+            : (await _context.SupplierProfiles.FindAsync(userId))?.BusinessNameAr ?? "مورد";
+
+        
+        await _notificationService.SendChatNotificationAsync(
+            chatThreadId: threadId,
+            senderId: userId,
+            senderName: senderName,
+            messagePreview: thread.LastMessage ?? "رسالة جديدة"
+        );
+       
 
         // ✅ SignalR: لو أول رسالة في المحادثة، نرسل إشعار NewThread
         var isFirstMessage = await _context.ChatMessages.CountAsync(m => m.ThreadId == threadId && !m.IsDeleted) == 1;
@@ -534,6 +778,226 @@ public class ChatService : IChatService
             ChatMessage = messageDto
         };
     }
+
+    /// <summary>
+    /// إرسال رسالة مع معلومات القطعة
+    /// </summary>
+    private async Task<SendMessageResponse> SendMessageWithPartAsync(
+     long userId,
+     string userType,
+     long threadId,
+     SendMessageRequest request,
+     long? partId)
+    {
+        var thread = await _context.ChatThreads.FindAsync(threadId);
+
+        if (thread == null)
+        {
+            return new SendMessageResponse
+            {
+                Success = false,
+                Message = "Thread not found",
+                MessageAr = "المحادثة غير موجودة"
+            };
+        }
+
+        // التحقق من صلاحية الوصول
+        if ((userType == "customer" && thread.CustomerId != userId) ||
+            (userType == "supplier" && thread.SupplierId != userId))
+        {
+            return new SendMessageResponse
+            {
+                Success = false,
+                Message = "Access denied",
+                MessageAr = "غير مصرح لك بالوصول لهذه المحادثة"
+            };
+        }
+
+        // تحديد المحتوى الموجود
+        var hasContent = !string.IsNullOrWhiteSpace(request.Content);
+        var hasImages = request.Images != null && request.Images.Count > 0;
+        var hasVideos = request.Videos != null && request.Videos.Count > 0;
+        var hasVoice = request.Voice != null;
+
+        // التحقق من وجود محتوى
+        if (!hasContent && !hasImages && !hasVideos && !hasVoice)
+        {
+            return new SendMessageResponse
+            {
+                Success = false,
+                Message = "Message content is required",
+                MessageAr = "يجب إرسال محتوى (نص أو صور أو فيديو أو صوت)"
+            };
+        }
+
+        // الصوت لازم يكون لوحده
+        if (hasVoice && (hasImages || hasVideos))
+        {
+            return new SendMessageResponse
+            {
+                Success = false,
+                Message = "Voice message cannot be combined with images or videos",
+                MessageAr = "الرسالة الصوتية لا يمكن دمجها مع صور أو فيديوهات"
+            };
+        }
+
+        // التحقق من حجم الملفات
+        var validationResult = ValidateFiles(request);
+        if (!validationResult.Success)
+        {
+            return validationResult;
+        }
+
+        // تحديد نوع الرسالة
+        var messageType = DetermineMessageType(hasContent, hasImages, hasVideos, hasVoice);
+
+        // إنشاء الرسالة مع Metadata
+        var message = new ChatMessage
+        {
+            ThreadId = threadId,
+            SenderId = userId,
+            SenderType = userType,
+            MessageType = messageType,
+            Content = request.Content,
+            Metadata = partId.HasValue
+                ? System.Text.Json.JsonSerializer.Serialize(new { PartId = partId.Value })
+                : null,  // ← الفرق الوحيد عن SendMessageAsync الأصلي
+            IsRead = false,
+            IsDeleted = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.ChatMessages.Add(message);
+        await _context.SaveChangesAsync();
+
+        // رفع الملفات وإنشاء المرفقات
+        var attachments = new List<ChatAttachment>();
+        var folder = $"chat/{threadId}";
+
+        // رفع الصور
+        if (hasImages)
+        {
+            foreach (var file in request.Images!)
+            {
+                var fileUrl = await _fileService.UploadFileAsync(file, $"{folder}/images");
+                attachments.Add(CreateAttachment(message.Id, "image", fileUrl, file));
+            }
+        }
+
+        // رفع الفيديوهات
+        if (hasVideos)
+        {
+            foreach (var file in request.Videos!)
+            {
+                var fileUrl = await _fileService.UploadFileAsync(file, $"{folder}/videos");
+                attachments.Add(CreateAttachment(message.Id, "video", fileUrl, file));
+            }
+        }
+
+        // رفع الصوت
+        if (hasVoice)
+        {
+            var fileUrl = await _fileService.UploadFileAsync(request.Voice!, $"{folder}/voice");
+            attachments.Add(CreateAttachment(message.Id, "voice", fileUrl, request.Voice!));
+        }
+
+        // حفظ المرفقات
+        if (attachments.Any())
+        {
+            _context.ChatAttachments.AddRange(attachments);
+        }
+
+        // تحديث المحادثة
+        thread.LastMessage = GetLastMessageText(request, hasContent, hasImages, hasVideos, hasVoice);
+        thread.LastMessageAt = DateTime.UtcNow;
+        thread.LastMessageBy = userId;
+        thread.UpdatedAt = DateTime.UtcNow;
+        if (partId.HasValue)
+        {
+            thread.PartId = partId.Value;
+        }
+        // زيادة عداد الرسائل غير المقروءة للطرف الآخر
+        if (userType == "customer")
+            thread.SupplierUnreadCount++;
+        else
+            thread.CustomerUnreadCount++;
+
+        await _context.SaveChangesAsync();
+
+        // تجهيز DTO للرسالة
+        var messageDto = new ChatMessageDto
+        {
+            Id = message.Id,
+            SenderId = message.SenderId,
+            SenderType = message.SenderType,
+            MessageType = message.MessageType,
+            Content = message.Content,
+            IsRead = message.IsRead,
+            CreatedAt = message.CreatedAt,
+            Attachments = attachments.Select(a => new ChatAttachmentDto
+            {
+                Id = a.Id,
+                FileType = a.FileType,
+                FileUrl = a.FileUrl,
+                FileName = a.FileName,
+                FileSize = a.FileSize,
+                Duration = a.Duration
+            }).ToList()
+        };
+
+        // ✅ SignalR: إرسال للطرف الآخر
+        var recipientId = userType == "customer" ? thread.SupplierId : thread.CustomerId;
+        await _chatHubService.SendNewMessageAsync(recipientId, threadId, messageDto);
+
+        // ✅ SignalR: إرسال لكل المتصلين بالمحادثة (تأكيد الاستلام)
+        await _chatHubService.SendMessageReceivedAsync(threadId, message.Id, userId, userType);
+
+        // ✅ Push Notification: إرسال إشعار للطرف الآخر
+        var senderName = userType == "customer"
+            ? (await _context.Users.FindAsync(userId))?.FullName ?? "عميل"
+            : (await _context.SupplierProfiles.FindAsync(userId))?.BusinessNameAr ?? "مورد";
+
+        await _notificationService.SendChatNotificationAsync(
+            chatThreadId: threadId,
+            senderId: userId,
+            senderName: senderName,
+            messagePreview: thread.LastMessage ?? "رسالة جديدة"
+        );
+
+        // ✅ SignalR: لو أول رسالة في المحادثة، نرسل إشعار NewThread
+        var isFirstMessage = await _context.ChatMessages.CountAsync(m => m.ThreadId == threadId && !m.IsDeleted) == 1;
+        if (isFirstMessage)
+        {
+            var customer = await _context.Users.FindAsync(thread.CustomerId);
+            var part = thread.PartId.HasValue ? await _context.Parts.FindAsync(thread.PartId) : null;
+
+            await _chatHubService.SendNewThreadAsync(recipientId, new
+            {
+                ThreadId = threadId,
+                CustomerId = thread.CustomerId,
+                CustomerName = customer?.FullName,
+                CustomerAvatar = customer?.AvatarUrl,
+                PartId = thread.PartId,
+                PartName = part?.NameAr,
+                Message = messageDto,
+                CreatedAt = thread.CreatedAt
+            });
+        }
+
+        return new SendMessageResponse
+        {
+            Success = true,
+            Message = "Message sent",
+            MessageAr = "تم إرسال الرسالة",
+            ChatMessage = messageDto
+        };
+    }
+
+    public Task<SendMessageResponse> SendMessageWithPartPublicAsync(long userId, string userType, long threadId, SendMessageRequest request)
+    {
+        return SendMessageWithPartAsync(userId, userType, threadId, request, request.PartId);
+    }
+
 
     /// <summary>
     /// تعليم المحادثة كمقروءة

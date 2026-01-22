@@ -81,6 +81,7 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<PartCondition> PartConditions { get; set; }
     public virtual DbSet<WarrantyType> WarrantyTypes { get; set; }
     public virtual DbSet<Year> Years { get; set; }
+    public DbSet<Payment> Payments { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -1618,6 +1619,30 @@ public partial class TashlihContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.YearValue).HasColumnName("year");
+        });
+
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.ToTable("Payments");
+            entity.HasKey(e => e.PaymentId);
+            entity.Property(e => e.PaymentId).HasColumnName("PaymentId");
+            entity.Property(e => e.UserId).HasColumnName("UserId");
+            entity.Property(e => e.UserType).HasColumnName("UserType");
+            entity.Property(e => e.SubscriptionId).HasColumnName("SubscriptionId");
+            entity.Property(e => e.Amount).HasColumnName("Amount");
+            entity.Property(e => e.Currency).HasColumnName("Currency");
+            entity.Property(e => e.Provider).HasColumnName("Provider");
+            entity.Property(e => e.InvoiceId).HasColumnName("InvoiceId");
+            entity.Property(e => e.PaymentId_External).HasColumnName("PaymentId_External");
+            entity.Property(e => e.PaymentUrl).HasColumnName("PaymentUrl");
+            entity.Property(e => e.Status).HasColumnName("Status");
+            entity.Property(e => e.PaidAt).HasColumnName("PaidAt");
+            entity.Property(e => e.FailedAt).HasColumnName("FailedAt");
+            entity.Property(e => e.FailureReason).HasColumnName("FailureReason");
+            entity.Property(e => e.CallbackData).HasColumnName("CallbackData");
+            entity.Property(e => e.CreatedAt).HasColumnName("CreatedAt");
+            entity.Property(e => e.UpdatedAt).HasColumnName("UpdatedAt");
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
         });
 
         OnModelCreatingPartial(modelBuilder);

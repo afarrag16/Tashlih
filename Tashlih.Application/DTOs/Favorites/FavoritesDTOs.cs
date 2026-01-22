@@ -67,6 +67,9 @@ public class FavoritePartDto
     public string? ConditionAr { get; set; }
     public long SupplierId { get; set; }
     public string? SupplierName { get; set; }
+    public string? CategoryName { get; set; }
+    public string? CategoryNameEn { get; set; }
+    public int? Quantity { get; set; }
     public string? City { get; set; }
     public bool IsAvailable { get; set; }
     public bool HasWarranty { get; set; }
@@ -81,6 +84,7 @@ public class FavoriteSupplierDto
     public long Id { get; set; }
     public long SupplierId { get; set; }
     public string? SupplierName { get; set; }
+    public string? BusinessType { get; set; }
     public string? SupplierLogo { get; set; }
     public string? City { get; set; }
     public string? District { get; set; }

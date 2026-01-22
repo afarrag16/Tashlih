@@ -13,7 +13,9 @@ namespace Tashlih.Infrastructure.Services
     {
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
-        private readonly string[] _allowedImageExtensions = { ".jpg", ".jpeg", ".png", ".pdf" };
+        private readonly string[] _allowedImageExtensions = { ".jpg", ".jpeg", ".png" };
+        private readonly string[] _allowedDocumentExtensions = { ".jpg", ".jpeg", ".png", ".pdf" };
+        private readonly string[] _allowedMediaExtensions = { ".jpg", ".jpeg", ".png", ".mp4", ".mov", ".mkv", ".avi" };
         private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
         public FileService(IWebHostEnvironment environment, IConfiguration configuration)
@@ -21,40 +23,82 @@ namespace Tashlih.Infrastructure.Services
             _environment = environment;
             _configuration = configuration;
         }
-
         public async Task<string> UploadFileAsync(IFormFile file, string folder)
         {
             if (file == null || file.Length == 0)
                 throw new ArgumentException("الملف فارغ أو غير موجود");
 
-            // التحقق من نوع الملف
-            if (!IsValidFileType(file, _allowedImageExtensions))
-                throw new ArgumentException("نوع الملف غير مسموح. الأنواع المسموحة: jpg, jpeg, png, pdf");
+            if (!IsValidFileType(file, _allowedDocumentExtensions))
+                throw new ArgumentException("نوع الملف غير مسموح");
 
-            // التحقق من حجم الملف
             if (!IsValidFileSize(file, MaxFileSize))
                 throw new ArgumentException("حجم الملف يتجاوز الحد المسموح (5 ميجابايت)");
 
-            // إنشاء اسم فريد للملف
+            return await SaveFileAsync(file, folder);
+        }
+        // للمستندات (التسجيل - صور + PDF)
+        public async Task<string> UploadDocumentAsync(IFormFile file, string folder)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("الملف فارغ أو غير موجود");
+
+            if (!IsValidFileType(file, _allowedDocumentExtensions))
+                throw new ArgumentException("نوع الملف غير مسموح. الأنواع المسموحة: jpg, jpeg, png, pdf");
+
+            if (!IsValidFileSize(file, MaxFileSize))
+                throw new ArgumentException("حجم الملف يتجاوز الحد المسموح (5 ميجابايت)");
+
+            return await SaveFileAsync(file, folder);
+        }
+
+        // للصور فقط (اللوجو)
+        public async Task<string> UploadImageAsync(IFormFile file, string folder)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("الملف فارغ أو غير موجود");
+
+            if (!IsValidFileType(file, _allowedImageExtensions))
+                throw new ArgumentException("نوع الملف غير مسموح. الأنواع المسموحة: jpg, jpeg, png");
+
+            if (!IsValidFileSize(file, MaxFileSize))
+                throw new ArgumentException("حجم الملف يتجاوز الحد المسموح (5 ميجابايت)");
+
+            return await SaveFileAsync(file, folder);
+        }
+
+        // للميديا (المنتجات - صور + فيديو)
+        public async Task<string> UploadMediaAsync(IFormFile file, string folder)
+        {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("الملف فارغ أو غير موجود");
+
+            if (!IsValidFileType(file, _allowedMediaExtensions))
+                throw new ArgumentException("نوع الملف غير مسموح. الأنواع المسموحة: jpg, jpeg, png, mp4, mov, mkv, avi");
+
+            if (!IsValidFileSize(file, MaxFileSize))
+                throw new ArgumentException("حجم الملف يتجاوز الحد المسموح (5 ميجابايت)");
+
+            return await SaveFileAsync(file, folder);
+        }
+
+        // Method مشتركة لحفظ الملف
+        private async Task<string> SaveFileAsync(IFormFile file, string folder)
+        {
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
 
-            // إنشاء المسار الكامل
             var uploadsFolder = Path.Combine(_environment.WebRootPath ?? _environment.ContentRootPath, "uploads", folder);
 
-            // إنشاء المجلد لو مش موجود
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            // حفظ الملف
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
-            // إرجاع الـ Relative Path فقط
             return $"/uploads/{folder}/{uniqueFileName}";
         }
 

@@ -128,13 +128,24 @@ public class ChatController : ControllerBase
         var userId = GetUserId();
         var userType = GetUserType();
 
-        var result = await _chatService.SendMessageAsync(userId, userType, threadId, request);
+        SendMessageResponse result;
+
+        // ✅ لو PartId موجود استخدم ميثود الميتاداتا
+        if (request.PartId.HasValue)
+        {
+            result = await _chatService.SendMessageWithPartPublicAsync(userId, userType, threadId, request);
+        }
+        else
+        {
+            result = await _chatService.SendMessageAsync(userId, userType, threadId, request);
+        }
 
         if (!result.Success)
             return BadRequest(result);
 
         return Ok(result);
     }
+
 
     /// <summary>
     /// تعليم المحادثة كمقروءة
