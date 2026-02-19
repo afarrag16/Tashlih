@@ -27,6 +27,8 @@ public partial class User
     public bool NotificationsEnabled { get; set; }
     public string? OtpCode { get; set; }
     public DateTime? OtpExpiresAt { get; set; }
+    public string? OtpPurpose { get; set; }
+
     public string? Street { get; set; }
     public int? CityId { get; set; }
     public string? PostalCode { get; set; }

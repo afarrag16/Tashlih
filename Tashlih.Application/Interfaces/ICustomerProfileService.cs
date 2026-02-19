@@ -34,4 +34,9 @@ public interface ICustomerProfileService
     /// جلب قائمة المدن
     /// </summary>
     Task<List<CityDto>> GetCitiesAsync();
+
+    /// <summary>
+    /// حذف الحساب
+    /// </summary>
+    Task<DeleteAccountResponse> DeleteAccountAsync(long userId, DeleteAccountRequest request);
 }

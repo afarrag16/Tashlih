@@ -218,6 +218,7 @@ public class FirebasePushService : IFirebasePushService
                     Priority = Priority.High,
                     Notification = new AndroidNotification()
                     {
+                        ChannelId = "high_importance_channel",
                         Sound = "default",
                         ClickAction = "FLUTTER_NOTIFICATION_CLICK"
                     }
@@ -227,7 +228,8 @@ public class FirebasePushService : IFirebasePushService
                     Aps = new Aps()
                     {
                         Sound = "default",
-                        Badge = 1
+                        Badge = 1,
+                        ContentAvailable = true
                     }
                 }
             };

@@ -14,6 +14,6 @@ public interface INotificationService
     // ========== للنظام (Internal) ==========
     Task<NotificationDto?> CreateNotificationAsync(CreateNotificationDto dto);
     Task SendOrderNotificationAsync(long orderId, string notificationType);
-    Task SendChatNotificationAsync(long chatThreadId, long senderId, string senderName, string messagePreview);
+    Task SendChatNotificationAsync(long chatThreadId, long senderId, string senderName, string senderType, string messagePreview);
     Task SendReviewNotificationAsync(long reviewId, long supplierId, string customerName, int rating);
 }

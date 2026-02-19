@@ -8,7 +8,7 @@ namespace Tashlih.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+ 
 public class SuppliersController : ControllerBase
 {
     private readonly ISuppliersService _suppliersService;
@@ -24,6 +24,7 @@ public class SuppliersController : ControllerBase
     /// جلب تفاصيل مورد
     /// </summary>
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<IActionResult> GetSupplierDetails(long id)
     {
         var result = await _suppliersService.GetSupplierDetailsAsync(id);
@@ -100,7 +101,7 @@ public class SuppliersController : ControllerBase
     /// البحث عن الموردين
     /// </summary>
     [HttpGet("search")]
-    [Authorize]
+    
     public async Task<IActionResult> SearchSuppliers([FromQuery] SuppliersSearchRequest request)
     {
         var result = await _suppliersService.SearchSuppliersAsync(request);

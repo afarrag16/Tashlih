@@ -15,6 +15,8 @@ public partial class SupplierProfile
     public string PreferredLanguage { get; set; } = "ar";
     public string? OtpCode { get; set; }
     public DateTime? OtpExpiresAt { get; set; }
+    public string? OtpPurpose { get; set; }
+
     public bool IsPhoneVerified { get; set; }
     public DateTime? LastLoginAt { get; set; }
 
@@ -47,6 +49,7 @@ public partial class SupplierProfile
     public bool IsVerified { get; set; }
     public string VerificationStatus { get; set; } = "pending";
     public string? RejectionReason { get; set; }
+    public string? RequiredDocuments { get; set; } // ✅ الجديد
     public string? AdminNotes { get; set; }
     public DateTime? VerificationSubmittedAt { get; set; }
     public DateTime? VerificationReviewedAt { get; set; }

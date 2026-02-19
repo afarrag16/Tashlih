@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace Tashlih.Application.DTOs.Admin;
 
@@ -60,20 +61,24 @@ public class CityRequest
 // إضافة/تعديل حالة قطعة
 public class PartConditionRequest
 {
-    public string Key { get; set; } = null!;
+    [Required(ErrorMessage = "الاسم بالعربي مطلوب")]
     public string NameAr { get; set; } = null!;
-    public string? NameEn { get; set; }
+
+    [Required(ErrorMessage = "الاسم بالإنجليزي مطلوب")]
+    public string NameEn { get; set; } = null!;
 }
 
 // إضافة/تعديل نوع ضمان
 public class WarrantyTypeRequest
 {
-    public string Key { get; set; } = null!;
+    [Required(ErrorMessage = "الاسم بالعربي مطلوب")]
     public string NameAr { get; set; } = null!;
-    public string? NameEn { get; set; }
+
+    [Required(ErrorMessage = "الاسم بالإنجليزي مطلوب")]
+    public string NameEn { get; set; } = null!;
+
     public int Days { get; set; }
 }
-
 // إضافة/تعديل سنة صنع
 public class YearRequest
 {

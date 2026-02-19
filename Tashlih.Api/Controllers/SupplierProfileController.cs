@@ -81,11 +81,11 @@ namespace Tashlih.Api.Controllers
         }
 
         /// <summary>
-        /// رفع مستند للتوثيق
+        /// إعادة رفع المستندات بعد الرفض
         /// </summary>
-        [HttpPost("verification/document")]
+        [HttpPost("verification/resubmit")]
         [Authorize]
-        public async Task<IActionResult> UploadVerificationDocument([FromForm] UploadVerificationDocumentRequest request)
+        public async Task<IActionResult> ResubmitVerification([FromForm] ResubmitVerificationRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -97,8 +97,7 @@ namespace Tashlih.Api.Controllers
             if (supplierId == 0)
                 return Unauthorized(new { success = false, message = "Unauthorized", messageAr = "غير مصرح" });
 
-            var result = await _supplierProfileService.UploadVerificationDocumentAsync(supplierId, request);
-
+            var result = await _supplierProfileService.ResubmitVerificationAsync(supplierId, request);
             if (!result.Success)
                 return BadRequest(result);
 
@@ -194,6 +193,28 @@ namespace Tashlih.Api.Controllers
 
             if (!result.Success)
                 return NotFound(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// حذف الحساب
+        /// </summary>
+        [HttpDelete("delete-account")]
+        [Authorize]
+        public async Task<IActionResult> DeleteAccount([FromBody] DeleteSupplierAccountRequest request)
+        {
+            if (!IsSupplier())
+                return Forbid();
+
+            var supplierId = GetSupplierId();
+            if (supplierId == 0)
+                return Unauthorized(new { success = false, message = "Unauthorized", messageAr = "غير مصرح" });
+
+            var result = await _supplierProfileService.DeleteAccountAsync(supplierId, request);
+
+            if (!result.Success)
+                return BadRequest(result);
 
             return Ok(result);
         }

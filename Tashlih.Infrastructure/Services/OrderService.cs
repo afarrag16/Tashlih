@@ -151,6 +151,7 @@ public class OrderService : IOrderService
     public async Task<OrdersListResponse> GetCustomerOrdersAsync(long customerId, string? status = null, int page = 1, int pageSize = 20)
     {
         var query = _context.Orders
+            .AsNoTracking()
             .Include(o => o.Supplier)
             .Include(o => o.OrderItems)
             .Where(o => o.CustomerId == customerId);
@@ -222,6 +223,7 @@ public class OrderService : IOrderService
     public async Task<OrderDetailsResponse> GetCustomerOrderDetailsAsync(long customerId, long orderId)
     {
         var order = await _context.Orders
+            .AsNoTracking()
             .Include(o => o.Customer)
             .Include(o => o.Supplier)
             .Include(o => o.OrderItems)
@@ -387,6 +389,7 @@ public class OrderService : IOrderService
     public async Task<OrdersListResponse> GetSupplierOrdersAsync(long supplierId, string? status = null, int page = 1, int pageSize = 20)
     {
         var query = _context.Orders
+            .AsNoTracking()
             .Include(o => o.Customer)
             .Include(o => o.OrderItems)
             .Where(o => o.SupplierId == supplierId);
@@ -458,6 +461,7 @@ public class OrderService : IOrderService
     public async Task<OrderDetailsResponse> GetSupplierOrderDetailsAsync(long supplierId, long orderId)
     {
         var order = await _context.Orders
+            .AsNoTracking()
             .Include(o => o.Customer)
             .Include(o => o.Supplier)
             .Include(o => o.OrderItems)

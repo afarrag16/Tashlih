@@ -11,7 +11,7 @@ namespace Tashlih.Application.Interfaces
         Task<SupplierProfileResponse> UpdateProfileAsync(long supplierId, UpdateSupplierProfileRequest request);
 
         // التوثيق
-        Task<VerificationResponse> UploadVerificationDocumentAsync(long supplierId, UploadVerificationDocumentRequest request);
+        Task<VerificationResponse> ResubmitVerificationAsync(long supplierId, ResubmitVerificationRequest request);
         Task<VerificationResponse> UpdateVerificationDataAsync(long supplierId, UpdateVerificationDataRequest request);
         Task<VerificationResponse> GetVerificationStatusAsync(long supplierId);
         Task<VerificationResponse> RequestVerificationAsync(long supplierId);
@@ -19,5 +19,9 @@ namespace Tashlih.Application.Interfaces
 
         // الإحصائيات
         Task<SupplierStatsResponse> GetSupplierStatsAsync(long supplierId);
+        /// <summary>
+        /// حذف الحساب
+        /// </summary>
+        Task<DeleteSupplierAccountResponse> DeleteAccountAsync(long supplierId, DeleteSupplierAccountRequest request);
     }
 }

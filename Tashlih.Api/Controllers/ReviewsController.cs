@@ -93,11 +93,28 @@ public class ReviewsController : ControllerBase
     /// <summary>
     /// جلب تقييمات مورد (للكل)
     /// </summary>
-    [HttpGet("supplier/{supplierId}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetSupplierReviews(long supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    //[HttpGet("supplier/{supplierId}")]
+    //[AllowAnonymous]
+    //public async Task<IActionResult> GetSupplierReviews(long supplierId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    //{
+    //    var result = await _reviewsService.GetSupplierReviewsAsync(supplierId, page, pageSize);
+    //    return Ok(result);
+    //}
+
+
+
+    /// <summary>
+    /// جلب تقييماتي (للمورد)
+    /// </summary>
+    [HttpGet("supplier/my-reviews")]
+    [Authorize]
+    public async Task<IActionResult> GetSupplierMyReviews()
     {
-        var result = await _reviewsService.GetSupplierReviewsAsync(supplierId, page, pageSize);
+        if (!IsSupplier())
+            return Forbid();
+
+        var supplierId = GetSupplierId();
+        var result = await _reviewsService.GetSupplierReviewsAsync(supplierId, 1, 100);
         return Ok(result);
     }
 
@@ -112,6 +129,17 @@ public class ReviewsController : ControllerBase
     private bool IsCustomer()
     {
         return User.FindFirst("user_type")?.Value == "customer";
+    }
+
+    private bool IsSupplier()
+    {
+        return User.FindFirst("user_type")?.Value == "supplier";
+    }
+
+    private long GetSupplierId()
+    {
+        var supplierIdClaim = User.FindFirst("supplier_id")?.Value;
+        return long.TryParse(supplierIdClaim, out var id) ? id : 0;
     }
 
     #endregion

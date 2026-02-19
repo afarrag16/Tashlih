@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Text.Json;
 using Tashlih.Application.DTOs.Admin;
 using Tashlih.Application.DTOs.Parts;
 using Tashlih.Application.DTOs.SupplierProfile;
 using Tashlih.Application.Interfaces;
+using Tashlih.Core.Entities;
 using Tashlih.Infrastructure.Models;
 
 namespace Tashlih.Infrastructure.Services;
@@ -76,10 +78,11 @@ public class AdminSupplierService
             .GroupBy(p => p.SupplierId)
             .Select(g => new { SupplierId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.SupplierId, x => x.Count);
-
         var subscriptions = await _context.Subscriptions
             .Include(s => s.Plan)
             .Where(s => supplierIds.Contains(s.SupplierId) && s.Status == "active")
+            .GroupBy(s => s.SupplierId)
+            .Select(g => g.OrderByDescending(s => s.CreatedAt).First())
             .ToDictionaryAsync(s => s.SupplierId);
 
         var suppliersDto = suppliers.Select(s => new AdminSupplierDto
@@ -387,6 +390,38 @@ public class AdminSupplierService
             supplier.VerificationStatus = "approved";
             supplier.VerifiedAt = DateTime.UtcNow;
             supplier.RejectionReason = null;
+            // ✅ إنشاء اشتراك في الباقة المجانية تلقائياً (لو موجودة)
+            var hasActiveSubscription = await _context.Subscriptions
+                .AnyAsync(s => s.SupplierId == supplier.Id && s.Status == "active");
+
+            if (!hasActiveSubscription)
+            {
+                // البحث عن أي باقة مجانية نشطة (Price = 0)
+                var freePlan = await _context.SubscriptionPlans
+                    .Where(p => p.Price == 0 && p.IsActive)
+                    .OrderBy(p => p.Id)
+                    .FirstOrDefaultAsync();
+
+                // لو فيه باقة مجانية، سجل المورد فيها
+                if (freePlan != null)
+                {
+                    var subscription = new Subscription
+                    {
+                        SupplierId = supplier.Id,
+                        PlanId = freePlan.Id,
+                        Status = "active",
+                        StartsAt = DateOnly.FromDateTime(DateTime.UtcNow),
+                        EndsAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(freePlan.DurationDays)),
+                        AmountPaid = 0,
+                        PaymentMethod = "free",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Subscriptions.Add(subscription);
+                }
+                // لو مفيش باقة مجانية، المورد يشترك يدوياً بعدين
+            }
         }
         else
         {
@@ -394,6 +429,16 @@ public class AdminSupplierService
             supplier.IsVerified = false;
             supplier.VerificationStatus = "rejected";
             supplier.RejectionReason = request.RejectionReason;
+
+            // حفظ المستندات المطلوبة
+            if (request.RequiredDocuments != null && request.RequiredDocuments.Any())
+            {
+                supplier.RequiredDocuments = JsonSerializer.Serialize(request.RequiredDocuments);
+            }
+            else
+            {
+                supplier.RequiredDocuments = null;
+            }
         }
 
         supplier.VerificationReviewedAt = DateTime.UtcNow;

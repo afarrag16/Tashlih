@@ -83,8 +83,8 @@ public partial class TashlihContext : DbContext
     public virtual DbSet<Year> Years { get; set; }
     public DbSet<Payment> Payments { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
+    //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    //    => optionsBuilder.UseSqlServer("Server=.;Database=Tashlih;Trusted_Connection=True;TrustServerCertificate=True;");
     //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     //    => optionsBuilder.UseSqlServer("Server=localhost;Database=Tashlih;User Id=sa;Password=Rekj@10170;TrustServerCertificate=True;");
 
@@ -999,12 +999,25 @@ public partial class TashlihContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("not_submitted")
                 .HasColumnName("verification_status");
+            entity.Property(e => e.RequiredDocuments)
+                  .HasColumnName("required_documents")
+                  .HasColumnType("text");
             entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
             entity.Property(e => e.VerifiedBy).HasColumnName("verified_by");
 
             entity.HasOne(d => d.User).WithOne(p => p.SupplierProfileUser)
                 .HasForeignKey<SupplierProfile>(d => d.UserId)
                 .HasConstraintName("FK_supplier_user");
+            entity.Property(e => e.OtpCode)
+                .HasMaxLength(10)           // أو 6 حسب طول OTP عندك
+                 .HasColumnName("OtpCode");
+
+            entity.Property(e => e.OtpExpiresAt)
+                .HasColumnName("OtpExpiresAt");
+            entity.Property(e => e.OtpPurpose)
+                  .HasMaxLength(20)
+                   .HasColumnName("OtpPurpose");
+
 
             entity.HasOne(d => d.VerifiedByNavigation).WithMany(p => p.SupplierProfileVerifiedByNavigations)
                 .HasForeignKey(d => d.VerifiedBy)
@@ -1099,6 +1112,16 @@ public partial class TashlihContext : DbContext
             entity.Property(e => e.PostalCode)
                 .HasColumnName("postal_code")
                 .HasMaxLength(20);
+            entity.Property(e => e.OtpCode)
+                  .HasMaxLength(10)
+                .HasColumnName("OtpCode");
+
+            entity.Property(e => e.OtpExpiresAt)
+                .HasColumnName("OtpExpiresAt");
+            entity.Property(e => e.OtpPurpose)
+                     .HasMaxLength(20)
+                .HasColumnName("OtpPurpose");
+
 
             entity.Property(e => e.Latitude)
                 .HasColumnName("latitude")

@@ -7,6 +7,8 @@ using Tashlih.Application.DTOs.SupplierProfile;
 using Tashlih.Application.Interfaces;
 using Tashlih.Infrastructure.Models;
 using Tashlih.Core.Entities;
+using System.Text.Json;
+
 
 namespace Tashlih.Infrastructure.Services
 {
@@ -154,9 +156,9 @@ namespace Tashlih.Infrastructure.Services
         }
 
         /// <summary>
-        /// رفع مستند للتوثيق
+        /// إعادة رفع المستندات بعد الرفض
         /// </summary>
-        public async Task<VerificationResponse> UploadVerificationDocumentAsync(long supplierId, UploadVerificationDocumentRequest request)
+        public async Task<VerificationResponse> ResubmitVerificationAsync(long supplierId, ResubmitVerificationRequest request)
         {
             var profile = await _context.SupplierProfiles
                 .FirstOrDefaultAsync(s => s.Id == supplierId && s.DeletedAt == null);
@@ -171,50 +173,60 @@ namespace Tashlih.Infrastructure.Services
                 };
             }
 
+            // التحقق إن المورد مرفوض
+            if (profile.VerificationStatus != "rejected")
+            {
+                return new VerificationResponse
+                {
+                    Success = false,
+                    Message = "Only rejected suppliers can resubmit documents",
+                    MessageAr = "فقط الموردين المرفوضين يمكنهم إعادة رفع المستندات"
+                };
+            }
+
             try
             {
-                // رفع الملف
-                var documentUrl = await _fileService.UploadFileAsync(request.Document, $"suppliers/{supplierId}/documents");
-
-                // حفظ الـ URL حسب نوع المستند
-                switch (request.DocumentType.ToLower())
+                // رفع المستند الأول
+                var document1Url = await _fileService.UploadFileAsync(request.Document1, $"suppliers/{supplierId}/documents");
+                if (!SaveDocumentUrl(profile, request.DocumentType1, document1Url))
                 {
-                    case "id_front":
-                        profile.IdFrontUrl = documentUrl;
-                        break;
-                    case "id_back":
-                        profile.IdBackUrl = documentUrl;
-                        break;
-                    case "commercial_register":
-                    case "cr_image":
-                        profile.CommercialRegisterImageUrl = documentUrl;
-                        break;
-                    case "license":
-                    case "license_image":
-                        profile.LicenseImageUrl = documentUrl;
-                        break;
-                    case "tax_certificate":
-                        profile.TaxCertificateUrl = documentUrl;
-                        break;
-                    default:
+                    return new VerificationResponse
+                    {
+                        Success = false,
+                        Message = "Invalid document type for Document1",
+                        MessageAr = "نوع المستند الأول غير صحيح"
+                    };
+                }
+
+                // رفع المستند الثاني (لو موجود)
+                if (request.Document2 != null && !string.IsNullOrEmpty(request.DocumentType2))
+                {
+                    var document2Url = await _fileService.UploadFileAsync(request.Document2, $"suppliers/{supplierId}/documents");
+                    if (!SaveDocumentUrl(profile, request.DocumentType2, document2Url))
+                    {
                         return new VerificationResponse
                         {
                             Success = false,
-                            Message = "Invalid document type. Valid types: id_front, id_back, commercial_register, license, tax_certificate",
-                            MessageAr = "نوع المستند غير صحيح. الأنواع المتاحة: id_front, id_back, commercial_register, license, tax_certificate"
+                            Message = "Invalid document type for Document2",
+                            MessageAr = "نوع المستند الثاني غير صحيح"
                         };
+                    }
                 }
 
+                // تغيير الحالة لـ pending_review
+                profile.VerificationStatus = "pending_review";
+                profile.RejectionReason = null;
+                profile.RequiredDocuments = null;
                 profile.UpdatedAt = DateTime.UtcNow;
+
                 await _context.SaveChangesAsync();
 
                 return new VerificationResponse
                 {
                     Success = true,
-                    Message = "Document uploaded successfully",
-                    MessageAr = "تم رفع المستند بنجاح",
-                    VerificationStatus = profile.VerificationStatus,
-                    DocumentUrl = documentUrl
+                    Message = "Documents submitted successfully, pending review",
+                    MessageAr = "تم رفع المستندات بنجاح، في انتظار المراجعة",
+                    VerificationStatus = profile.VerificationStatus
                 };
             }
             catch (ArgumentException ex)
@@ -225,6 +237,33 @@ namespace Tashlih.Infrastructure.Services
                     Message = ex.Message,
                     MessageAr = ex.Message
                 };
+            }
+        }
+
+        /// <summary>
+        /// حفظ URL المستند حسب النوع
+        /// </summary>
+        private bool SaveDocumentUrl(SupplierProfile profile, string documentType, string url)
+        {
+            switch (documentType.ToLower())
+            {
+                case "id_front":
+                    profile.IdFrontUrl = url;
+                    return true;
+                case "id_back":
+                    profile.IdBackUrl = url;
+                    return true;
+                case "commercial_register":
+                    profile.CommercialRegisterImageUrl = url;
+                    return true;
+                case "license":
+                    profile.LicenseImageUrl = url;
+                    return true;
+                case "tax_certificate":
+                    profile.TaxCertificateUrl = url;
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -363,6 +402,9 @@ namespace Tashlih.Infrastructure.Services
                 VerificationStatus = profile.VerificationStatus,
                 Documents = documents,
                 RejectionReason = profile.RejectionReason,
+                RequiredDocuments = !string.IsNullOrEmpty(profile.RequiredDocuments)
+                 ? JsonSerializer.Deserialize<List<string>>(profile.RequiredDocuments)
+                 : null, // ✅ الجديد
                 AdminNotes = profile.AdminNotes,
                 SubmittedAt = profile.VerificationSubmittedAt,
                 ReviewedAt = profile.VerificationReviewedAt
@@ -529,6 +571,59 @@ namespace Tashlih.Infrastructure.Services
                     VerificationStatus = profile.VerificationStatus,
                     RejectionReason = profile.RejectionReason
                 }
+            };
+        }
+
+        /// <summary>
+        /// حذف الحساب
+        /// </summary>
+        public async Task<DeleteSupplierAccountResponse> DeleteAccountAsync(long supplierId, DeleteSupplierAccountRequest request)
+        {
+            var supplier = await _context.SupplierProfiles
+                .FirstOrDefaultAsync(s => s.Id == supplierId && s.DeletedAt == null);
+
+            if (supplier == null)
+            {
+                return new DeleteSupplierAccountResponse
+                {
+                    Success = false,
+                    Message = "Supplier not found",
+                    MessageAr = "المورد غير موجود"
+                };
+            }
+
+            // التحقق من كلمة المرور
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, supplier.PasswordHash))
+            {
+                return new DeleteSupplierAccountResponse
+                {
+                    Success = false,
+                    Message = "Incorrect password",
+                    MessageAr = "كلمة المرور غير صحيحة"
+                };
+            }
+
+            // Soft Delete
+            supplier.DeletedAt = DateTime.UtcNow;
+            supplier.UpdatedAt = DateTime.UtcNow;
+
+            // إلغاء كل الـ Sessions
+            var sessions = await _context.SupplierSessions
+                .Where(s => s.SupplierId == supplierId && s.IsActive)
+                .ToListAsync();
+
+            foreach (var session in sessions)
+            {
+                session.IsActive = false;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return new DeleteSupplierAccountResponse
+            {
+                Success = true,
+                Message = "Account deleted successfully",
+                MessageAr = "تم حذف الحساب بنجاح"
             };
         }
 

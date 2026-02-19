@@ -150,4 +150,26 @@ public class CustomerProfileController : ControllerBase
             return userId;
         return null;
     }
+
+    /// <summary>
+    /// حذف الحساب
+    /// </summary>
+    [HttpDelete("delete-account")]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized(new { message = "غير مصرح" });
+
+        var userType = User.FindFirst("user_type")?.Value;
+        if (userType != "customer")
+            return Forbid();
+
+        var result = await _customerProfileService.DeleteAccountAsync(userId.Value, request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }

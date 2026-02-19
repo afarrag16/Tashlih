@@ -173,6 +173,7 @@ public class ChatService : IChatService
     {
         // 1) جلب محادثات العميل (بدون Include للـ Part لأننا هنعتمد على آخر Part من الرسائل)
         var threads = await _context.ChatThreads
+            .AsNoTracking()
             .Include(t => t.Supplier)
             .Where(t => t.CustomerId == customerId && t.Status == "active")
             .OrderByDescending(t => t.LastMessageAt ?? t.CreatedAt)
@@ -289,6 +290,7 @@ public class ChatService : IChatService
     {
         // 1) جلب محادثات المورد (بدون Include للـ Part لأننا هنعتمد على آخر Part من الرسائل)
         var threads = await _context.ChatThreads
+            .AsNoTracking()
             .Include(t => t.Customer)
             .Where(t => t.SupplierId == supplierId && t.Status == "active")
             .OrderByDescending(t => t.LastMessageAt ?? t.CreatedAt)
@@ -438,6 +440,7 @@ public class ChatService : IChatService
 
         // جلب الرسائل مع Pagination (من الأقدم للأحدث)
         var messages = await _context.ChatMessages
+            .AsNoTracking()
             .Include(m => m.ChatAttachments)
             .Where(m => m.ThreadId == threadId && !m.IsDeleted)
             .OrderByDescending(m => m.CreatedAt)  // الأحدث أولاً
@@ -734,7 +737,9 @@ public class ChatService : IChatService
         // ✅ SignalR: إرسال لكل المتصلين بالمحادثة (تأكيد الاستلام)
         await _chatHubService.SendMessageReceivedAsync(threadId, message.Id, userId, userType);
 
-      
+        // ✅ SignalR: تحديث قائمة المحادثات للطرفين (أضف هنا)
+        await _chatHubService.SendChatListUpdatedAsync(userId, threadId);
+        await _chatHubService.SendChatListUpdatedAsync(recipientId, threadId);
 
         // ✅ Push Notification: إرسال إشعار للطرف الآخر
         var senderName = userType == "customer"
@@ -746,6 +751,7 @@ public class ChatService : IChatService
             chatThreadId: threadId,
             senderId: userId,
             senderName: senderName,
+            senderType:userType,
             messagePreview: thread.LastMessage ?? "رسالة جديدة"
         );
        
@@ -952,6 +958,9 @@ public class ChatService : IChatService
         // ✅ SignalR: إرسال لكل المتصلين بالمحادثة (تأكيد الاستلام)
         await _chatHubService.SendMessageReceivedAsync(threadId, message.Id, userId, userType);
 
+        await _chatHubService.SendChatListUpdatedAsync(userId, threadId);
+        await _chatHubService.SendChatListUpdatedAsync(recipientId, threadId);
+
         // ✅ Push Notification: إرسال إشعار للطرف الآخر
         var senderName = userType == "customer"
             ? (await _context.Users.FindAsync(userId))?.FullName ?? "عميل"
@@ -961,6 +970,7 @@ public class ChatService : IChatService
             chatThreadId: threadId,
             senderId: userId,
             senderName: senderName,
+            senderType: userType,
             messagePreview: thread.LastMessage ?? "رسالة جديدة"
         );
 
@@ -1054,6 +1064,22 @@ public class ChatService : IChatService
             thread.CustomerUnreadCount = 0;
         else
             thread.SupplierUnreadCount = 0;
+
+        // ✅ تعليم إشعارات الشات كمقروءة - أضف هذا الكود
+        var unreadNotifications = await _context.Notifications
+            .Where(n => n.UserId == userId
+                && n.UserType == userType
+                && n.Type == "new_message"
+                && !n.IsRead
+                && n.Data != null
+                && n.Data.Contains($"\"chatThreadId\":{threadId}"))
+            .ToListAsync();
+
+        foreach (var notification in unreadNotifications)
+        {
+            notification.IsRead = true;
+            notification.ReadAt = DateTime.UtcNow;
+        }
 
         await _context.SaveChangesAsync();
 

@@ -442,13 +442,16 @@ public class AdminLookupsService
 
     public async Task<LookupResponse> AddPartConditionAsync(PartConditionRequest request)
     {
-        var exists = await _context.PartConditions.AnyAsync(p => p.Key == request.Key || p.NameAr == request.NameAr);
+        // توليد الـ key تلقائي من الـ NameEn
+        var key = GenerateKey(request.NameEn);
+
+        var exists = await _context.PartConditions.AnyAsync(p => p.Key == key || p.NameAr == request.NameAr);
         if (exists)
             return new LookupResponse { Success = false, Message = "Part condition already exists", MessageAr = "حالة القطعة موجودة مسبقاً" };
 
         var entity = new PartCondition
         {
-            Key = request.Key,
+            Key = key,
             NameAr = request.NameAr,
             NameEn = request.NameEn
         };
@@ -471,7 +474,15 @@ public class AdminLookupsService
         if (entity == null)
             return new LookupResponse { Success = false, Message = "Not found", MessageAr = "غير موجود" };
 
-        entity.Key = request.Key;
+        // توليد الـ key تلقائي من الـ NameEn
+        var key = GenerateKey(request.NameEn);
+
+        // التحقق من عدم التكرار (مع استثناء العنصر الحالي)
+        var exists = await _context.PartConditions.AnyAsync(p => p.Id != id && (p.Key == key || p.NameAr == request.NameAr));
+        if (exists)
+            return new LookupResponse { Success = false, Message = "Part condition already exists", MessageAr = "حالة القطعة موجودة مسبقاً" };
+
+        entity.Key = key;
         entity.NameAr = request.NameAr;
         entity.NameEn = request.NameEn;
 
@@ -485,6 +496,8 @@ public class AdminLookupsService
             Data = new { entity.Id, entity.Key, entity.NameAr, entity.NameEn }
         };
     }
+
+   
 
     public async Task<LookupResponse> DeletePartConditionAsync(long id)
     {
@@ -509,13 +522,16 @@ public class AdminLookupsService
 
     public async Task<LookupResponse> AddWarrantyTypeAsync(WarrantyTypeRequest request)
     {
-        var exists = await _context.WarrantyTypes.AnyAsync(w => w.Key == request.Key || w.NameAr == request.NameAr);
+        // توليد الـ key تلقائي من الـ NameEn
+        var key = GenerateKey(request.NameEn);
+
+        var exists = await _context.WarrantyTypes.AnyAsync(w => w.Key == key || w.NameAr == request.NameAr);
         if (exists)
             return new LookupResponse { Success = false, Message = "Warranty type already exists", MessageAr = "نوع الضمان موجود مسبقاً" };
 
         var entity = new WarrantyType
         {
-            Key = request.Key,
+            Key = key,
             NameAr = request.NameAr,
             NameEn = request.NameEn,
             Days = request.Days
@@ -539,7 +555,15 @@ public class AdminLookupsService
         if (entity == null)
             return new LookupResponse { Success = false, Message = "Not found", MessageAr = "غير موجود" };
 
-        entity.Key = request.Key;
+        // توليد الـ key تلقائي من الـ NameEn
+        var key = GenerateKey(request.NameEn);
+
+        // التحقق من عدم التكرار (مع استثناء العنصر الحالي)
+        var exists = await _context.WarrantyTypes.AnyAsync(w => w.Id != id && (w.Key == key || w.NameAr == request.NameAr));
+        if (exists)
+            return new LookupResponse { Success = false, Message = "Warranty type already exists", MessageAr = "نوع الضمان موجود مسبقاً" };
+
+        entity.Key = key;
         entity.NameAr = request.NameAr;
         entity.NameEn = request.NameEn;
         entity.Days = request.Days;
@@ -633,6 +657,21 @@ public class AdminLookupsService
             Message = "Year deleted successfully",
             MessageAr = "تم حذف السنة بنجاح"
         };
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// توليد الـ key من الاسم الإنجليزي
+    /// </summary>
+    private string GenerateKey(string nameEn)
+    {
+        return nameEn.ToLower()
+            .Trim()
+            .Replace(" ", "_")
+            .Replace("-", "_");
     }
 
     #endregion

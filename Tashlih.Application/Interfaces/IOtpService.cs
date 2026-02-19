@@ -8,7 +8,9 @@ namespace Tashlih.Application.Interfaces
 {
     public interface IOtpService
     {
-        string GenerateOtp();
-        Task<bool> SendOtpSmsAsync(string phone, string otp);
+        Task<bool> SendOtpSmsAsync(string phone);
+        Task<bool> VerifyOtpAsync(string phone, string code);
+
     }
+
 }

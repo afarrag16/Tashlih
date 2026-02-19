@@ -35,6 +35,7 @@ public class NotificationService : INotificationService
         }
 
         var query = _context.Notifications
+            .AsNoTracking()
             .Where(n => n.UserId == actualUserId)
             .OrderByDescending(n => n.CreatedAt);
 
@@ -190,14 +191,20 @@ public class NotificationService : INotificationService
             var pushData = new Dictionary<string, string>
     {
         { "type", dto.Type },
-        { "notificationId", notification.Id.ToString() }
+        { "notificationId", notification.Id.ToString() },
+        { "click_action", "FLUTTER_NOTIFICATION_CLICK" } // تأكيد إضافي للأندرويد
     };
 
             if (dto.Data != null)
             {
                 foreach (var item in dto.Data)
                 {
-                    pushData[item.Key] = item.Value?.ToString() ?? "";
+                    // نستخدم TryAdd لمنع حدوث خطأ إذا كان المفتاح موجوداً مسبقاً (مثل type)
+                    // ونحول القيم إلى String لأن Firebase Data تقبل نصوص فقط
+                    if (!pushData.ContainsKey(item.Key))
+                    {
+                        pushData.Add(item.Key, item.Value?.ToString() ?? "");
+                    }
                 }
             }
 
@@ -211,6 +218,9 @@ public class NotificationService : INotificationService
 
             notification.IsPushSent = pushSent;
             notification.PushSentAt = pushSent ? DateTime.UtcNow : null;
+            // تحديث الحقل فقط بدلاً من حفظ الكائن كاملاً مرة أخرى (تحسين للأداء)
+            _context.Entry(notification).Property(x => x.IsPushSent).IsModified = true;
+            _context.Entry(notification).Property(x => x.PushSentAt).IsModified = true;
             await _context.SaveChangesAsync();
         }
 
@@ -246,7 +256,9 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Customer?.FullName ?? "" },
+                        { "senderType", "customer" }
                     },
                     Priority = "high"
                 });
@@ -267,7 +279,9 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Supplier?.BusinessNameAr ?? "" },
+                        { "senderType", "supplier" }
                     }
                 });
                 break;
@@ -286,7 +300,9 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Supplier?.BusinessNameAr ?? "" },
+                        { "senderType", "supplier" }
                     },
                     Priority = "high"
                 });
@@ -306,7 +322,9 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Customer?.FullName ?? "" },
+                        { "senderType", "customer" }
                     }
                 });
                 break;
@@ -325,7 +343,9 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Customer?.FullName ?? "" },
+                        { "senderType", "customer" }
                     }
                 });
                 break;
@@ -344,14 +364,16 @@ public class NotificationService : INotificationService
                     Data = new Dictionary<string, object>
                     {
                         { "orderId", order.Id },
-                        { "orderNumber", order.OrderNumber ?? "" }
+                        { "orderNumber", order.OrderNumber ?? "" },
+                        { "senderName", order.Supplier?.BusinessNameAr ?? "" },
+                        { "senderType", "supplier" }
                     }
                 });
                 break;
         }
     }
 
-    public async Task SendChatNotificationAsync(long chatThreadId, long senderId, string senderName, string messagePreview)
+    public async Task SendChatNotificationAsync(long chatThreadId, long senderId, string senderName, string senderType, string messagePreview)
     {
 
 
@@ -394,7 +416,9 @@ public class NotificationService : INotificationService
             Data = new Dictionary<string, object>
             {
                 { "chatThreadId", chatThreadId },
-                { "senderId", senderId }
+                { "senderId", senderId },
+                 { "senderName", senderName },    // ✅ أضف
+                 { "senderType", senderType }     // ✅ أضف
             },
             Priority = "high"
         });

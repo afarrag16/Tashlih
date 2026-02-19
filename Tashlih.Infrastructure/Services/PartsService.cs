@@ -336,6 +336,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetSupplierPartsAsync(long supplierId, int page = 1, int pageSize = 20, string? status = null)
         {
             var query = _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.SupplierId == supplierId);
 
             if (!string.IsNullOrEmpty(status))
@@ -584,6 +585,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetAllPartsAsync(int page, int pageSize)
         {
             var query = _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available");
 
             var totalItems = await query.CountAsync();
@@ -629,6 +631,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartResponse> GetPartByIdAsync(long partId)
         {
             var part = await _context.VPartsDetaileds
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == partId);
 
             if (part == null)
@@ -665,6 +668,7 @@ namespace Tashlih.Infrastructure.Services
                 .ToListAsync();
 
             var query = _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available")
                 .Where(p => activeSupplierIds.Contains(p.SupplierId)); // ✅ فقط القطع اللي صاحبها عنده اشتراك فعال
 
@@ -811,6 +815,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetPartsByCategoryAsync(long categoryId, int page, int pageSize)
         {
             var query = _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available" && p.CategoryId == categoryId);
 
             var totalItems = await query.CountAsync();
@@ -856,6 +861,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetPartsBySupplierAsync(long supplierId, int page, int pageSize)
         {
             var query = _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available" && p.SupplierId == supplierId);
 
             var totalItems = await query.CountAsync();
@@ -901,6 +907,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetFeaturedPartsAsync(int count)
         {
             var parts = await _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available" && p.IsFeatured)
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(count)
@@ -931,6 +938,7 @@ namespace Tashlih.Infrastructure.Services
         public async Task<PartsListResponse> GetLatestPartsAsync(int count)
         {
             var parts = await _context.VPartsDetaileds
+                .AsNoTracking()
                 .Where(p => p.Status == "available")
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(count)
@@ -1201,7 +1209,7 @@ namespace Tashlih.Infrastructure.Services
             };
         }
 
-        private string GetConditionAr(string? condition)
+        private string GetConditionAr(string? condition) 
         {
             return condition?.ToLower() switch
             {

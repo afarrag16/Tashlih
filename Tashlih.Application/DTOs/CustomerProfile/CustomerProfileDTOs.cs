@@ -1,4 +1,6 @@
-﻿namespace Tashlih.Application.DTOs.CustomerProfile;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Tashlih.Application.DTOs.CustomerProfile;
 
 #region Response DTOs
 
@@ -89,4 +91,25 @@ public class UpdateLocationRequest
     public string? PostalCode { get; set; }
 }
 
+#endregion
+
+#region Delete Account DTOs
+/// <summary>
+/// طلب حذف الحساب
+/// </summary>
+public class DeleteAccountRequest
+{
+    [Required(ErrorMessage = "كلمة المرور مطلوبة")]
+    public string Password { get; set; } = null!;
+}
+
+/// <summary>
+/// استجابة حذف الحساب
+/// </summary>
+public class DeleteAccountResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? MessageAr { get; set; }
+}
 #endregion

@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Tashlih.Api.BackgroundServices;
 using Tashlih.Api.Hubs;
@@ -122,8 +119,9 @@ namespace Tashlih.Api
             #endregion
 
             #region Database & Services
+
             builder.Services.AddDbContext<TashlihContext>(options =>
-                       options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+                      options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             //var connectionString = "Server=localhost;Database=Tashlih;User Id=sa;Password=Rekj@10170;TrustServerCertificate=True;";
 
             //builder.Services.AddDbContext<TashlihContext>(options =>
@@ -157,6 +155,7 @@ namespace Tashlih.Api
             builder.Services.AddScoped<ILogService, LogService>();
             builder.Services.AddScoped<AdminLogsService>();
             builder.Services.AddHttpClient<IPaymentService, PaymentService>();
+            
 
             #endregion
 
@@ -177,7 +176,12 @@ namespace Tashlih.Api
             {
                 options.AddPolicy("SignalRPolicy", policy =>
                 {
-                    policy.WithOrigins("https://altashalih.app") // ضع دومين الموقع هنا
+                    policy.WithOrigins(
+                        "http://localhost:4200",
+                        "https://altashalih.app",
+                         "https://www.altashalih.app",
+                        "https://tashlih.netlify.app"
+                        ) // ضع دومين الموقع هنا
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials(); // ضروري جداً
@@ -194,34 +198,73 @@ namespace Tashlih.Api
             builder.Services.AddSignalR();
             builder.Services.AddScoped<IChatHubService, ChatHubService>();
             builder.Services.AddScoped<IOrderHubService, OrderHubService>();
-           
+
             #region Rate Limiting
             // Rate Limiting
+            //builder.Services.AddRateLimiter(options =>
+            //{
+            //    // 1️⃣ الحد العام - 100 طلب/دقيقة
+            //    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            //        RateLimitPartition.GetFixedWindowLimiter(
+            //            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            //            factory: _ => new FixedWindowRateLimiterOptions
+            //            {
+            //                AutoReplenishment = true,
+            //                PermitLimit = 100,
+            //                Window = TimeSpan.FromMinutes(1)
+            //            }));
+
+            //    // 2️⃣ حد تسجيل الدخول - 5 محاولات / 15 دقيقة
+            //    options.AddFixedWindowLimiter("login", opt =>
+            //    {
+            //        opt.PermitLimit = 5;
+            //        opt.Window = TimeSpan.FromMinutes(15);
+            //        opt.AutoReplenishment = true;
+            //    }); 
+
+            //    // 3️⃣ حد إرسال OTP - 3 مرات / 10 دقائق
+            //    options.AddFixedWindowLimiter("otp", opt =>
+            //    {
+            //        opt.PermitLimit = 3;
+            //        opt.Window = TimeSpan.FromMinutes(10);
+            //        opt.AutoReplenishment = true;
+            //    });
+
+            //    // رسالة عند تجاوز الحد
+            //    options.RejectionStatusCode = 429;
+            //    options.OnRejected = async (context, token) =>
+            //    {
+            //        context.HttpContext.Response.ContentType = "application/json";
+            //        await context.HttpContext.Response.WriteAsync(
+            //            "{\"success\":false,\"message\":\"Too many requests\",\"messageAr\":\"طلبات كثيرة، حاول لاحقاً\"}", token);
+            //    };
+            //});
+
             builder.Services.AddRateLimiter(options =>
             {
-                // 1️⃣ الحد العام - 100 طلب/دقيقة
+                // 1️⃣ الحد العام - 500 طلب/دقيقة (بدل 100)
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
-                            PermitLimit = 100,
+                            PermitLimit = 1000,
                             Window = TimeSpan.FromMinutes(1)
                         }));
 
-                // 2️⃣ حد تسجيل الدخول - 5 محاولات / 15 دقيقة
+                // 2️⃣ حد تسجيل الدخول - 20 محاولة / 15 دقيقة (بدل 5)
                 options.AddFixedWindowLimiter("login", opt =>
                 {
-                    opt.PermitLimit = 5;
+                    opt.PermitLimit = 30;
                     opt.Window = TimeSpan.FromMinutes(15);
                     opt.AutoReplenishment = true;
-                }); 
+                });
 
-                // 3️⃣ حد إرسال OTP - 3 مرات / 10 دقائق
+                // 3️⃣ حد إرسال OTP - 10 مرات / 10 دقائق (بدل 3)
                 options.AddFixedWindowLimiter("otp", opt =>
                 {
-                    opt.PermitLimit = 3;
+                    opt.PermitLimit = 10;
                     opt.Window = TimeSpan.FromMinutes(10);
                     opt.AutoReplenishment = true;
                 });
@@ -235,9 +278,10 @@ namespace Tashlih.Api
                         "{\"success\":false,\"message\":\"Too many requests\",\"messageAr\":\"طلبات كثيرة، حاول لاحقاً\"}", token);
                 };
             });
+
             #endregion
 
-          
+
 
             var app = builder.Build();
 

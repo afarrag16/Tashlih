@@ -228,4 +228,57 @@ public class CustomerProfileService : ICustomerProfileService
             })
             .ToListAsync();
     }
+    /// <summary>
+    /// حذف الحساب
+    /// </summary>
+    public async Task<DeleteAccountResponse> DeleteAccountAsync(long userId, DeleteAccountRequest request)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId && u.DeletedAt == null);
+
+        if (user == null)
+        {
+            return new DeleteAccountResponse
+            {
+                Success = false,
+                Message = "User not found",
+                MessageAr = "المستخدم غير موجود"
+            };
+        }
+
+        // التحقق من كلمة المرور
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            return new DeleteAccountResponse
+            {
+                Success = false,
+                Message = "Incorrect password",
+                MessageAr = "كلمة المرور غير صحيحة"
+            };
+        }
+
+        // Soft Delete
+        user.DeletedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // إلغاء كل الـ Sessions
+        var sessions = await _context.UserSessions
+            .Where(s => s.UserId == userId && s.IsActive)
+            .ToListAsync();
+
+        foreach (var session in sessions)
+        {
+            session.IsActive = false;
+           
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new DeleteAccountResponse
+        {
+            Success = true,
+            Message = "Account deleted successfully",
+            MessageAr = "تم حذف الحساب بنجاح"
+        };
+    }
 }

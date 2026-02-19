@@ -209,20 +209,14 @@ namespace Tashlih.Infrastructure.Services
 
                 var response = await _httpClient.PostAsJsonAsync("/v2/GetPaymentStatus", payload);
 
-
-
                 var result = await response.Content.ReadFromJsonAsync<MyFatoorahStatusResponse>();
                 if (result?.IsSuccess == true && result.Data != null)
                 {
                     var isPaid = result.Data.InvoiceStatus == "Paid";
 
-                   
-
                     // ✅ جيب الـ PaymentId من أول Transaction ناجحة
                     var externalPaymentId = result.Data.InvoiceTransactions?
                         .FirstOrDefault(t => t.TransactionStatus == "Succss")?.PaymentId;
-
-                  
 
                     // تحديث سجل الدفع
                     var payment = await _context.Payments
@@ -238,6 +232,16 @@ namespace Tashlih.Infrastructure.Services
                             payment.PaidAt = DateTime.UtcNow;
 
                         await _context.SaveChangesAsync();
+
+                        // ✅ لو مدفوع → فعّل الباقة وابعت إشعار
+                        if (isPaid && payment.SubscriptionId.HasValue)
+                        {
+                            await ActivateSubscriptionAsync(
+                                payment.SubscriptionId.Value,
+                                externalPaymentId,
+                                payment.Amount
+                            );
+                        }
                     }
 
                     return new PaymentStatusResponse
@@ -247,7 +251,6 @@ namespace Tashlih.Infrastructure.Services
                         Status = result.Data.InvoiceStatus,
                         PaymentIdExternal = externalPaymentId,
                         Message = isPaid ? "Payment successful" : "Payment not completed",
-                       
                     };
                 }
 
@@ -270,7 +273,7 @@ namespace Tashlih.Infrastructure.Services
             }
         }
 
-      
+
 
         public async Task<PaymentStatusResponse> VerifyPaymentByExternalPaymentIdAsync(string paymentIdExternal)
         {
@@ -459,7 +462,7 @@ namespace Tashlih.Infrastructure.Services
                     return false;
 
                 var payment = await _context.Payments
-                    .Include(p => p.Subscription)
+                    .Include(p => p.Subscription!)
                         .ThenInclude(s => s.Plan)
                     .FirstOrDefaultAsync(p => p.PaymentId_External == paymentIdExternal);
 

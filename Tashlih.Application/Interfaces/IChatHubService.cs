@@ -36,4 +36,6 @@ public interface IChatHubService
     /// إشعار بإغلاق المحادثة
     /// </summary>
     Task SendThreadClosedAsync(long userId, long threadId, long closedBy, string closedByType);
+
+    Task SendChatListUpdatedAsync(long userId, long threadId);
 }

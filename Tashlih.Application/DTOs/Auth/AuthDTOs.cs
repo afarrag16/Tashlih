@@ -15,7 +15,7 @@ namespace Tashlih.Application.DTOs.Auth
         public DateTime? ExpiresAt { get; set; }
         public UserDto? User { get; set; }
         public string? OtpCode { get; set; }  // ✅ أضف هنا
-
+        public bool? IsPhoneVerified { get; set; }
     }
 
   
@@ -33,6 +33,7 @@ namespace Tashlih.Application.DTOs.Auth
         public bool IsVerified { get; set; }
         public string? VerificationStatus { get; set; }
         public string? RejectionReason { get; set; }
+        public string? AdminNotes { get; set; }
         public string? PreferredLanguage { get; set; }
         public bool NotificationsEnabled { get; set; }
         public DateTime? CreatedAt { get; set; }
@@ -172,8 +173,9 @@ namespace Tashlih.Application.DTOs.Auth
         [Required]
         public string Phone { get; set; } = null!;
 
-        public string Purpose { get; set; } = "login";
-    }
+    [Required]
+    public string Purpose { get; set; } = null!;   // verify | login | reset
+}
 
     public class VerifyOtpRequest
     {

@@ -16,17 +16,20 @@ namespace Tashlih.Infrastructure.Services
         private readonly IJwtService _jwtService;
         private readonly IFileService _fileService;
         private readonly IConfiguration _configuration;
+        private readonly IOtpService _otpService;
 
         public AuthService(
             TashlihContext context,
             IJwtService jwtService,
             IFileService fileService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IOtpService otpService)
         {
             _context = context;
             _jwtService = jwtService;
             _fileService = fileService;
             _configuration = configuration;
+            _otpService = otpService;
         }
 
         #region التسجيل
@@ -44,10 +47,9 @@ namespace Tashlih.Infrastructure.Services
             }
 
             var email = string.IsNullOrWhiteSpace(request.Email) ||
-            request.Email == "user@example.com"
-    ? null
-    : request.Email.Trim().ToLower();
-
+                request.Email == "user@example.com"
+                ? null
+                : request.Email.Trim().ToLower();
 
             if (email != null && await IsEmailExistsAsync(email))
             {
@@ -58,6 +60,8 @@ namespace Tashlih.Infrastructure.Services
                     MessageAr = "البريد الإلكتروني مسجل مسبقاً"
                 };
             }
+
+            var expiresAt = DateTime.UtcNow.AddMinutes(5);
 
             var user = new User
             {
@@ -70,29 +74,32 @@ namespace Tashlih.Infrastructure.Services
                 PreferredLanguage = request.PreferredLanguage ?? "ar",
                 NotificationsEnabled = true,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                IsPhoneVerified = false,
+                OtpExpiresAt = expiresAt,
+                OtpPurpose = "verify"
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // إرسال OTP للتحقق
-            var otp = GenerateOtp();
-            user.OtpCode = otp;
-            user.OtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
-            user.IsPhoneVerified = false;
-            await _context.SaveChangesAsync();
-
-#if DEBUG
-            Console.WriteLine($"[OTP] Phone: {user.Phone} | OTP: {otp}");
-#endif
+            // إرسال OTP عبر Twilio
+            var smsSent = await _otpService.SendOtpSmsAsync(request.Phone);
+            if (!smsSent)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Failed to send OTP",
+                    MessageAr = "فشل في إرسال رمز التحقق"
+                };
+            }
 
             return new AuthResponse
             {
                 Success = true,
                 Message = "Registration successful. Please verify your phone",
-                MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال",
-                OtpCode = otp  // للتجربة
+                MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال"
             };
         }
 
@@ -163,6 +170,8 @@ namespace Tashlih.Infrastructure.Services
                     );
                 }
 
+                var expiresAt = DateTime.UtcNow.AddMinutes(5);
+
                 var supplier = new SupplierProfile
                 {
                     FullName = request.FullName,
@@ -178,13 +187,16 @@ namespace Tashlih.Infrastructure.Services
                     CommercialRegister = request.CommercialRegisterNumber,
                     CommercialRegisterImageUrl = crImageUrl,
                     IdFrontUrl = idImageUrl,
-                    LogoUrl = logoUrl,                    
-                    Latitude = request.Latitude,          
-                    Longitude = request.Longitude,        
+                    LogoUrl = logoUrl,
+                    Latitude = request.Latitude,
+                    Longitude = request.Longitude,
                     Status = "active",
                     VerificationStatus = "pending_review",
                     VerificationSubmittedAt = DateTime.UtcNow,
                     IsVerified = false,
+                    IsPhoneVerified = false,
+                    OtpExpiresAt = expiresAt,
+                    OtpPurpose = "verify",
                     RatingAverage = 0,
                     RatingCount = 0,
                     TotalOrders = 0,
@@ -196,23 +208,23 @@ namespace Tashlih.Infrastructure.Services
                 _context.SupplierProfiles.Add(supplier);
                 await _context.SaveChangesAsync();
 
-                // إرسال OTP للتحقق
-                var otp = GenerateOtp();
-                supplier.OtpCode = otp;
-                supplier.OtpExpiresAt = DateTime.UtcNow.AddMinutes(5);
-                supplier.IsPhoneVerified = false;
-                await _context.SaveChangesAsync();
-
-#if DEBUG
-                Console.WriteLine($"[OTP] Phone: {supplier.Phone} | OTP: {otp}");
-#endif
+                // إرسال OTP عبر Twilio
+                var smsSent = await _otpService.SendOtpSmsAsync(request.Phone);
+                if (!smsSent)
+                {
+                    return new AuthResponse
+                    {
+                        Success = false,
+                        Message = "Failed to send OTP",
+                        MessageAr = "فشل في إرسال رمز التحقق"
+                    };
+                }
 
                 return new AuthResponse
                 {
                     Success = true,
                     Message = "Registration successful. Please verify your phone",
-                    MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال",
-                    OtpCode = otp  // للتجربة
+                    MessageAr = "تم التسجيل بنجاح. يرجى تأكيد رقم الجوال"
                 };
             }
             catch (ArgumentException ex)
@@ -261,14 +273,18 @@ namespace Tashlih.Infrastructure.Services
                     {
                         Success = false,
                         Message = "Phone not verified. Please verify your phone first",
-                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً",
+                        IsPhoneVerified = false
                     };
                 }
 
                 customer.LastLoginAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                return await CreateCustomerAuthResponseAsync(customer, request.DeviceType, request.DeviceName, request.FcmToken);
+                //return await CreateCustomerAuthResponseAsync(customer, request.DeviceType, request.DeviceName, request.FcmToken);
+                var response = await CreateCustomerAuthResponseAsync(customer, request.DeviceType, request.DeviceName, request.FcmToken);
+                response.IsPhoneVerified = true;
+                return response;
             }
 
             // البحث في الموردين
@@ -303,14 +319,20 @@ namespace Tashlih.Infrastructure.Services
                     {
                         Success = false,
                         Message = "Phone not verified. Please verify your phone first",
-                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً",
+                        IsPhoneVerified = false
                     };
                 }
 
                 supplier.LastLoginAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
+                //var supplierResponse = await CreateSupplierAuthResponseAsync(supplier, request.DeviceType, request.DeviceName, request.FcmToken);
+                supplier.LastLoginAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
                 var supplierResponse = await CreateSupplierAuthResponseAsync(supplier, request.DeviceType, request.DeviceName, request.FcmToken);
+                supplierResponse.IsPhoneVerified = true;
 
                 return new AuthResponse
                 {
@@ -319,6 +341,7 @@ namespace Tashlih.Infrastructure.Services
                     MessageAr = supplierResponse.MessageAr,
                     Token = supplierResponse.Token,
                     ExpiresAt = supplierResponse.ExpiresAt,
+                    IsPhoneVerified = true,
                     User = supplierResponse.User != null ? new UserDto
                     {
                         Id = supplierResponse.User.Id,
@@ -329,6 +352,8 @@ namespace Tashlih.Infrastructure.Services
                         Status = supplierResponse.User.Status,
                         IsVerified = supplierResponse.User.IsVerified,
                         VerificationStatus = supplierResponse.User.VerificationStatus,
+                        RejectionReason = supplierResponse.User.RejectionReason,
+                        AdminNotes = supplierResponse.User.AdminNotes,
                         PreferredLanguage = supplierResponse.User.PreferredLanguage,
                         CreatedAt = supplierResponse.User.CreatedAt ?? DateTime.UtcNow
                     } : null
@@ -415,10 +440,109 @@ namespace Tashlih.Infrastructure.Services
             return new AuthResponse { Success = true, Message = "Password changed successfully", MessageAr = "تم تغيير كلمة المرور بنجاح" };
         }
 
-        public Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
+        public async Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(request.Phone) ||
+                string.IsNullOrWhiteSpace(request.OtpCode) ||
+                string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Invalid request",
+                    MessageAr = "بيانات غير صحيحة"
+                };
+            }
+
+            var now = DateTime.UtcNow;
+            const string purpose = "reset";
+
+            // 1) هات الحساب + تحقق إن عنده Session صالحة
+            var user = await _context.Users.FirstOrDefaultAsync(u =>
+                u.Phone == request.Phone &&
+                u.OtpPurpose == purpose &&
+                u.OtpExpiresAt.HasValue &&
+                u.OtpExpiresAt > now &&
+                u.DeletedAt == null);
+
+            SupplierProfile? supplier = null;
+
+            if (user == null)
+            {
+                supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
+                    s.Phone == request.Phone &&
+                    s.OtpPurpose == purpose &&
+                    s.OtpExpiresAt.HasValue &&
+                    s.OtpExpiresAt > now &&
+                    s.DeletedAt == null);
+            }
+
+            if (user == null && supplier == null)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "OTP session not found or expired",
+                    MessageAr = "لا يوجد طلب تحقق صالح أو انتهت صلاحيته"
+                };
+            }
+
+            // 2) Verify من Twilio
+            var twilioOk = await _otpService.VerifyOtpAsync(request.Phone, request.OtpCode);
+            if (!twilioOk)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Invalid or expired OTP",
+                    MessageAr = "رمز التحقق غير صحيح أو منتهي"
+                };
+            }
+
+            // 3) نجاح - العميل
+            if (user != null)
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+                user.OtpCode = null;
+                user.OtpExpiresAt = null;
+                user.OtpPurpose = null;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return new AuthResponse
+                {
+                    Success = true,
+                    Message = "Password reset successfully",
+                    MessageAr = "تم إعادة تعيين كلمة المرور بنجاح"
+                };
+            }
+
+            // 4) نجاح - المورد
+            if (string.IsNullOrEmpty(supplier!.PasswordHash))
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Password reset is not allowed for this account",
+                    MessageAr = "لا يمكن إعادة تعيين كلمة المرور لهذا الحساب"
+                };
+            }
+
+            supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            supplier.OtpCode = null;
+            supplier.OtpExpiresAt = null;
+            supplier.OtpPurpose = null;
+            supplier.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return new AuthResponse
+            {
+                Success = true,
+                Message = "Password reset successfully",
+                MessageAr = "تم إعادة تعيين كلمة المرور بنجاح"
+            };
         }
+
 
         #endregion
 
@@ -491,63 +615,230 @@ namespace Tashlih.Infrastructure.Services
 
         #region OTP
 
+        //public async Task<AuthResponse> SendOtpAsync(SendOtpRequest request)
+        //{
+        //    if (string.IsNullOrWhiteSpace(request.Phone))
+        //    {
+        //        return new AuthResponse
+        //        {
+        //            Success = false,
+        //            Message = "Phone is required",
+        //            MessageAr = "رقم الجوال مطلوب"
+        //        };
+        //    }
+
+        //    if (string.IsNullOrWhiteSpace(request.Purpose))
+        //    {
+        //        return new AuthResponse
+        //        {
+        //            Success = false,
+        //            Message = "OTP purpose is required",
+        //            MessageAr = "غرض رمز التحقق مطلوب"
+        //        };
+        //    }
+
+        //    var purpose = request.Purpose.Trim().ToLowerInvariant();
+
+        //    if (purpose is not ("verify" or "login" or "reset"))
+        //    {
+        //        return new AuthResponse
+        //        {
+        //            Success = false,
+        //            Message = "Invalid OTP purpose",
+        //            MessageAr = "غرض رمز التحقق غير صحيح"
+        //        };
+        //    }
+
+        //    var otp = GenerateOtp();
+        //    var expiresAt = DateTime.UtcNow.AddMinutes(5);
+
+        //    // ====== البحث في المستخدمين ======
+        //    var user = await _context.Users
+        //        .FirstOrDefaultAsync(u => u.Phone == request.Phone && u.DeletedAt == null);
+
+        //    if (user != null)
+        //    {
+        //        user.OtpCode = otp;
+        //        user.OtpExpiresAt = expiresAt;
+        //        user.OtpPurpose = purpose;              // ✅ إضافة الغرض
+        //        user.UpdatedAt = DateTime.UtcNow;
+
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    else
+        //    {
+        //        // ====== البحث في الموردين ======
+        //        var supplier = await _context.SupplierProfiles
+        //            .FirstOrDefaultAsync(s => s.Phone == request.Phone && s.DeletedAt == null);
+
+        //        if (supplier == null)
+        //        {
+        //            return new AuthResponse
+        //            {
+        //                Success = false,
+        //                Message = "User not found",
+        //                MessageAr = "المستخدم غير موجود"
+        //            };
+        //        }
+
+        //        supplier.OtpCode = otp;
+        //        supplier.OtpExpiresAt = expiresAt;
+        //        supplier.OtpPurpose = purpose;          // ✅ إضافة الغرض
+        //        supplier.UpdatedAt = DateTime.UtcNow;
+
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    // إرسال الـ OTP عبر SMS
+
+        //    var smsSent = await _otpService.SendOtpSmsAsync(request.Phone);
+
+        //    if (!smsSent)
+        //    {
+        //        return new AuthResponse
+        //        {
+        //            Success = false,
+        //            Message = "Failed to send OTP",
+        //            MessageAr = "فشل في إرسال رمز التحقق"
+        //        };
+        //    }
+
+        //    return new AuthResponse
+        //    {
+        //        Success = true,
+        //        Message = "OTP sent successfully",
+        //        MessageAr = "تم إرسال رمز التحقق"
+        //    };
+
+        //}
         public async Task<AuthResponse> SendOtpAsync(SendOtpRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Phone))
-            {
-                return new AuthResponse
-                {
-                    Success = false,
-                    Message = "Phone is required",
-                    MessageAr = "رقم الجوال مطلوب"
-                };
-            }
+                return Fail("Phone is required", "رقم الجوال مطلوب");
 
-            var otp = GenerateOtp();
-            var expiresAt = DateTime.UtcNow.AddMinutes(5);
+            if (string.IsNullOrWhiteSpace(request.Purpose))
+                return Fail("OTP purpose is required", "غرض رمز التحقق مطلوب");
 
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Phone == request.Phone && u.DeletedAt == null);
+            var purpose = request.Purpose.Trim().ToLowerInvariant();
+            if (purpose is not ("verify" or "login" or "reset"))
+                return Fail("Invalid OTP purpose", "غرض رمز التحقق غير صحيح");
 
+            var now = DateTime.UtcNow;
+            var expiresAt = now.AddMinutes(5);
+
+            // 1) هات الحساب الأول
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == request.Phone && u.DeletedAt == null);
+            SupplierProfile? supplier = null;
+
+            if (user == null)
+                supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s => s.Phone == request.Phone && s.DeletedAt == null);
+
+            if (user == null && supplier == null)
+                return Fail("User not found", "المستخدم غير موجود");
+
+            // 2) حدّث session عندك (بدون تخزين OtpCode)
             if (user != null)
             {
-                user.OtpCode = otp;
+                user.OtpPurpose = purpose;
                 user.OtpExpiresAt = expiresAt;
-                await _context.SaveChangesAsync();
+                user.UpdatedAt = now;
             }
             else
             {
-                var supplier = await _context.SupplierProfiles
-                    .FirstOrDefaultAsync(s => s.Phone == request.Phone && s.DeletedAt == null);
-
-                if (supplier == null)
-                {
-                    return new AuthResponse
-                    {
-                        Success = false,
-                        Message = "User not found",
-                        MessageAr = "المستخدم غير موجود"
-                    };
-                }
-
-                supplier.OtpCode = otp;
+                supplier!.OtpPurpose = purpose;
                 supplier.OtpExpiresAt = expiresAt;
-                await _context.SaveChangesAsync();
+                supplier.UpdatedAt = now;
             }
 
-#if DEBUG
-            Console.WriteLine($"[OTP] Phone: {request.Phone} | OTP: {otp} | ExpiresAt: {expiresAt}");
-#endif
+            await _context.SaveChangesAsync();
 
-            return new AuthResponse
-            {
-                Success = true,
-                Message = "OTP sent successfully",
-                MessageAr = "تم إرسال رمز التحقق",
-                OtpCode = otp  // للتجربة
-            };
+            // 3) إرسال Twilio Verify
+            var smsSent = await _otpService.SendOtpSmsAsync(request.Phone);
+            if (!smsSent)
+                return Fail("Failed to send OTP", "فشل في إرسال رمز التحقق");
+
+            return Success("OTP sent successfully", "تم إرسال رمز التحقق");
         }
 
+        private static AuthResponse Fail(string en, string ar) => new AuthResponse { Success = false, Message = en, MessageAr = ar };
+        private static AuthResponse Success(string en, string ar) => new AuthResponse { Success = true, Message = en, MessageAr = ar };
+
+
+
+        //public async Task<AuthResponse> VerifyOtpAsync(VerifyOtpRequest request)
+        //{
+        //    if (string.IsNullOrWhiteSpace(request.Phone) || string.IsNullOrWhiteSpace(request.OtpCode))
+        //    {
+        //        return new AuthResponse
+        //        {
+        //            Success = false,
+        //            Message = "Invalid request",
+        //            MessageAr = "بيانات غير صحيحة"
+        //        };
+        //    }
+
+        //    var now = DateTime.UtcNow;
+        //    const string purpose = "verify"; // ✅ هذا endpoint خاص بتأكيد الهاتف فقط
+
+        //    // ====== 1) تحقق في جدول users ======
+        //    var user = await _context.Users.FirstOrDefaultAsync(u =>
+        //        u.Phone == request.Phone &&
+        //        u.OtpCode == request.OtpCode &&
+        //        u.OtpPurpose == purpose &&           // ✅ شرط الغرض
+        //        u.OtpExpiresAt.HasValue &&
+        //        u.OtpExpiresAt > now &&
+        //        u.DeletedAt == null);
+
+        //    if (user != null)
+        //    {
+        //        // مسح OTP بعد الاستخدام
+        //        user.OtpCode = null;
+        //        user.OtpExpiresAt = null;
+        //        user.OtpPurpose = null;              // ✅ مسح الغرض
+        //        user.IsPhoneVerified = true;
+        //        user.UpdatedAt = DateTime.UtcNow;
+
+        //        await _context.SaveChangesAsync();
+
+        //        // ✅ حسب طلبك: بعد الـ verify يطلع توكن عادي
+        //        return await CreateCustomerAuthResponseAsync(user, null, null, null);
+        //    }
+
+        //    // ====== 2) تحقق في جدول supplier_profile ======
+        //    var supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
+        //        s.Phone == request.Phone &&
+        //        s.OtpCode == request.OtpCode &&
+        //        s.OtpPurpose == purpose &&           // ✅ شرط الغرض
+        //        s.OtpExpiresAt.HasValue &&
+        //        s.OtpExpiresAt > now &&
+        //        s.DeletedAt == null);
+
+        //    if (supplier != null)
+        //    {
+        //        // مسح OTP بعد الاستخدام
+        //        supplier.OtpCode = null;
+        //        supplier.OtpExpiresAt = null;
+        //        supplier.OtpPurpose = null;          // ✅ مسح الغرض
+        //        supplier.IsPhoneVerified = true;
+        //        supplier.UpdatedAt = DateTime.UtcNow;
+
+        //        await _context.SaveChangesAsync();
+
+        //        // المورد: تأكيد جوال فقط + انتظار موافقة الإدارة (زي ما كان عندك)
+        //        return new AuthResponse
+        //        {
+        //            Success = true,
+        //            Message = "Phone verified. Waiting for admin approval",
+        //            MessageAr = "تم تأكيد رقم الجوال. في انتظار موافقة الإدارة"
+        //        };
+        //    }
+
+        //    return new AuthResponse
+        //    {
+        //        Success = false,
+        //        Message = "Invalid or expired OTP",
+        //        MessageAr = "رمز التحقق غير صحيح أو منتهي"
+        //    };
+        //}
         public async Task<AuthResponse> VerifyOtpAsync(VerifyOtpRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Phone) || string.IsNullOrWhiteSpace(request.OtpCode))
@@ -562,50 +853,107 @@ namespace Tashlih.Infrastructure.Services
 
             var now = DateTime.UtcNow;
 
+            // 1) هات الحساب + تحقق إن عنده Session صالحة
             var user = await _context.Users.FirstOrDefaultAsync(u =>
                 u.Phone == request.Phone &&
-                u.OtpCode == request.OtpCode &&
-                u.OtpExpiresAt > now &&
-                u.DeletedAt == null);
+                u.DeletedAt == null &&
+                u.OtpPurpose != null &&
+                u.OtpExpiresAt.HasValue &&
+                u.OtpExpiresAt > now);
 
+            SupplierProfile? supplier = null;
+
+            if (user == null)
+            {
+                supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
+                    s.Phone == request.Phone &&
+                    s.DeletedAt == null &&
+                    s.OtpPurpose != null &&
+                    s.OtpExpiresAt.HasValue &&
+                    s.OtpExpiresAt > now);
+            }
+
+            if (user == null && supplier == null)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "OTP session not found or expired",
+                    MessageAr = "لا يوجد طلب تحقق صالح أو انتهت صلاحيته"
+                };
+            }
+
+            // 2) Verify من Twilio
+            var twilioOk = await _otpService.VerifyOtpAsync(request.Phone, request.OtpCode);
+            if (!twilioOk)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Invalid or expired OTP",
+                    MessageAr = "رمز التحقق غير صحيح أو منتهي"
+                };
+            }
+
+            // 3) نجاح: جيب الـ purpose من الداتابيز
             if (user != null)
             {
+                var purpose = user.OtpPurpose;
+
                 user.OtpCode = null;
+                user.OtpPurpose = null;
                 user.OtpExpiresAt = null;
-                user.IsPhoneVerified = true;
+                user.UpdatedAt = now;
+
+                if (purpose == "verify")
+                    user.IsPhoneVerified = true;
+
                 await _context.SaveChangesAsync();
+
+                if (purpose == "reset")
+                {
+                    return new AuthResponse
+                    {
+                        Success = true,
+                        Message = "OTP verified. You can reset your password.",
+                        MessageAr = "تم التحقق. يمكنك إعادة تعيين كلمة المرور."
+                    };
+                }
 
                 return await CreateCustomerAuthResponseAsync(user, null, null, null);
             }
 
-            var supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
-                s.Phone == request.Phone &&
-                s.OtpCode == request.OtpCode &&
-                s.OtpExpiresAt > now &&
-                s.DeletedAt == null);
+            // المورد
+            var supplierPurpose = supplier!.OtpPurpose;
 
-            if (supplier != null)
-            {
-                supplier.OtpCode = null;
-                supplier.OtpExpiresAt = null;
+            supplier.OtpCode = null;
+            supplier.OtpPurpose = null;
+            supplier.OtpExpiresAt = null;
+            supplier.UpdatedAt = now;
+
+            if (supplierPurpose == "verify")
                 supplier.IsPhoneVerified = true;
-                await _context.SaveChangesAsync();
 
+            await _context.SaveChangesAsync();
+
+            if (supplierPurpose == "reset")
+            {
                 return new AuthResponse
                 {
                     Success = true,
-                    Message = "Phone verified. Waiting for admin approval",
-                    MessageAr = "تم تأكيد رقم الجوال. في انتظار موافقة الإدارة"
+                    Message = "OTP verified. You can reset your password.",
+                    MessageAr = "تم التحقق. يمكنك إعادة تعيين كلمة المرور."
                 };
             }
 
             return new AuthResponse
             {
-                Success = false,
-                Message = "Invalid or expired OTP",
-                MessageAr = "رمز التحقق غير صحيح أو منتهي"
+                Success = true,
+                Message = "Phone verified. Waiting for admin approval",
+                MessageAr = "تم تأكيد رقم الجوال. في انتظار موافقة الإدارة"
             };
         }
+
 
         public async Task<AuthResponse> LoginWithOtpAsync(OtpLoginRequest request)
         {
@@ -620,17 +968,57 @@ namespace Tashlih.Infrastructure.Services
             }
 
             var now = DateTime.UtcNow;
+            const string purpose = "login";
 
+            // 1) هات الحساب + تحقق إن عنده Session صالحة
             var user = await _context.Users.FirstOrDefaultAsync(u =>
                 u.Phone == request.Phone &&
-                u.OtpCode == request.OtpCode &&
+                u.OtpPurpose == purpose &&
+                u.OtpExpiresAt.HasValue &&
                 u.OtpExpiresAt > now &&
                 u.DeletedAt == null);
 
+            SupplierProfile? supplier = null;
+
+            if (user == null)
+            {
+                supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
+                    s.Phone == request.Phone &&
+                    s.OtpPurpose == purpose &&
+                    s.OtpExpiresAt.HasValue &&
+                    s.OtpExpiresAt > now &&
+                    s.DeletedAt == null);
+            }
+
+            if (user == null && supplier == null)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "OTP session not found or expired",
+                    MessageAr = "لا يوجد طلب تحقق صالح أو انتهت صلاحيته"
+                };
+            }
+
+            // 2) Verify من Twilio
+            var twilioOk = await _otpService.VerifyOtpAsync(request.Phone, request.OtpCode);
+            if (!twilioOk)
+            {
+                return new AuthResponse
+                {
+                    Success = false,
+                    Message = "Invalid or expired OTP",
+                    MessageAr = "رمز التحقق غير صحيح أو منتهي"
+                };
+            }
+
+            // 3) نجاح - العميل
             if (user != null)
             {
                 user.OtpCode = null;
                 user.OtpExpiresAt = null;
+                user.OtpPurpose = null;
+                user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 if (!user.IsPhoneVerified)
@@ -639,54 +1027,47 @@ namespace Tashlih.Infrastructure.Services
                     {
                         Success = false,
                         Message = "Phone not verified. Please verify your phone first",
-                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
+                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً",
+                        IsPhoneVerified = false
                     };
                 }
 
-                return await CreateCustomerAuthResponseAsync(
+                var response = await CreateCustomerAuthResponseAsync(
                     user,
                     request.DeviceType,
                     request.DeviceName,
                     request.FcmToken
                 );
+                response.IsPhoneVerified = true;
+                return response;
             }
 
-            var supplier = await _context.SupplierProfiles.FirstOrDefaultAsync(s =>
-                s.Phone == request.Phone &&
-                s.OtpCode == request.OtpCode &&
-                s.OtpExpiresAt > now &&
-                s.DeletedAt == null);
+            // 4) نجاح - المورد
+            supplier!.OtpCode = null;
+            supplier.OtpExpiresAt = null;
+            supplier.OtpPurpose = null;
+            supplier.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
 
-            if (supplier != null)
+            if (!supplier.IsPhoneVerified)
             {
-                supplier.OtpCode = null;
-                supplier.OtpExpiresAt = null;
-                await _context.SaveChangesAsync();
-
-                if (!supplier.IsPhoneVerified)
+                return new AuthResponse
                 {
-                    return new AuthResponse
-                    {
-                        Success = false,
-                        Message = "Phone not verified. Please verify your phone first",
-                        MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً"
-                    };
-                }
-
-                return await CreateSupplierAuthResponseAsync(
-                    supplier,
-                    request.DeviceType,
-                    request.DeviceName,
-                    request.FcmToken
-                );
+                    Success = false,
+                    Message = "Phone not verified. Please verify your phone first",
+                    MessageAr = "رقم الجوال غير مؤكد. يرجى تأكيد رقم الجوال أولاً",
+                    IsPhoneVerified = false
+                };
             }
 
-            return new AuthResponse
-            {
-                Success = false,
-                Message = "Invalid or expired OTP",
-                MessageAr = "رمز التحقق غير صحيح أو منتهي"
-            };
+            var supplierResponse = await CreateSupplierAuthResponseAsync(
+                supplier,
+                request.DeviceType,
+                request.DeviceName,
+                request.FcmToken
+            );
+            supplierResponse.IsPhoneVerified = true;
+            return supplierResponse;
         }
 
 
@@ -790,6 +1171,7 @@ namespace Tashlih.Infrastructure.Services
                     IsVerified = supplier.IsVerified,
                     VerificationStatus = supplier.VerificationStatus,
                     RejectionReason = supplier.RejectionReason,
+                    AdminNotes = supplier.AdminNotes,
                     PreferredLanguage = supplier.PreferredLanguage,
                     CreatedAt = supplier.CreatedAt
                 }

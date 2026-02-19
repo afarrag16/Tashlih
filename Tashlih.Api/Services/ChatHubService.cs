@@ -76,4 +76,12 @@ public class ChatHubService : IChatHubService
             ClosedAt = DateTime.UtcNow
         });
     }
+    public async Task SendChatListUpdatedAsync(long userId, long threadId)
+    {
+        await _hubContext.Clients.Group($"user_{userId}").SendAsync("ChatListUpdated", new
+        {
+            ThreadId = threadId,
+            UpdatedAt = DateTime.UtcNow
+        });
+    }
 }

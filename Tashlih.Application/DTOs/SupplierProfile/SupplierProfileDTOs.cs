@@ -46,15 +46,19 @@ namespace Tashlih.Application.DTOs.SupplierProfile
     }
 
     /// <summary>
-    /// طلب رفع مستند للتوثيق
+    /// طلب إعادة رفع المستندات بعد الرفض
     /// </summary>
-    public class UploadVerificationDocumentRequest
+    public class ResubmitVerificationRequest
     {
-        [Required(ErrorMessage = "نوع المستند مطلوب")]
-        public string DocumentType { get; set; } = null!;
+        [Required(ErrorMessage = "يجب رفع مستند واحد على الأقل")]
+        public IFormFile Document1 { get; set; } = null!;
 
-        [Required(ErrorMessage = "الملف مطلوب")]
-        public IFormFile Document { get; set; } = null!;
+        [Required(ErrorMessage = "نوع المستند الأول مطلوب")]
+        public string DocumentType1 { get; set; } = null!;
+
+        public IFormFile? Document2 { get; set; }
+
+        public string? DocumentType2 { get; set; }
     }
 
     /// <summary>
@@ -93,6 +97,11 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public string? RejectionReason { get; set; }
 
         public string? AdminNotes { get; set; }
+        /// <summary>
+        /// المستندات المطلوب إعادة رفعها عند الرفض
+        /// ["id_front", "id_back", "commercial_register", "license", "tax_certificate"]
+        /// </summary>
+        public List<string>? RequiredDocuments { get; set; }
     }
 
     // ==================== Response DTOs ====================
@@ -121,6 +130,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public string? DocumentUrl { get; set; }
         public List<VerificationDocumentDto>? Documents { get; set; }
         public string? RejectionReason { get; set; }
+        public List<string>? RequiredDocuments { get; set; }
         public string? AdminNotes { get; set; }
         public DateTime? SubmittedAt { get; set; }
         public DateTime? ReviewedAt { get; set; }
@@ -189,7 +199,7 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public DateOnly? ExpiryDate { get; set; }
         public DateTime? UploadedAt { get; set; }
     }
-
+   
     /// <summary>
     /// إحصائيات المورد
     /// </summary>
@@ -212,5 +222,23 @@ namespace Tashlih.Application.DTOs.SupplierProfile
         public bool IsVerified { get; set; }
         public string? VerificationStatus { get; set; }
         public string? RejectionReason { get; set; }
+    }
+    /// <summary>
+    /// طلب حذف الحساب
+    /// </summary>
+    public class DeleteSupplierAccountRequest
+    {
+        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
+        public string Password { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// استجابة حذف الحساب
+    /// </summary>
+    public class DeleteSupplierAccountResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? MessageAr { get; set; }
     }
 }
