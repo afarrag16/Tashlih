@@ -179,8 +179,8 @@ namespace Tashlih.Api
                     policy.WithOrigins(
                         "http://localhost:4200",
                         "https://altashalih.app",
-                         "https://www.altashalih.app",
-                        "https://tashlih.netlify.app"
+                        "https://www.altashalih.app",
+                        "https://altashalih.netlify.app"
                         ) // ضع دومين الموقع هنا
                           .AllowAnyHeader()
                           .AllowAnyMethod()

@@ -1106,6 +1106,7 @@ namespace Tashlih.Infrastructure.Services
                 MessageAr = "تم تسجيل الدخول بنجاح",
                 Token = accessToken,
                 ExpiresAt = expiresAt,
+                IsPhoneVerified = user.IsPhoneVerified,
                 User = new UserDto
                 {
                     Id = user.Id,
@@ -1160,6 +1161,7 @@ namespace Tashlih.Infrastructure.Services
                 MessageAr = "تم تسجيل الدخول بنجاح",
                 Token = accessToken,
                 ExpiresAt = expiresAt,
+                IsPhoneVerified = supplier.IsPhoneVerified, // ✅ أضف ده
                 User = new UserDto
                 {
                     Id = supplier.Id,
