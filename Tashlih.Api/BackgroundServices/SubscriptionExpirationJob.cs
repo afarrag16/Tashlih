@@ -20,19 +20,7 @@ public class SubscriptionExpirationJob : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            // حساب الوقت للساعة 9 صباحاً بتوقيت السعودية
-            var now = DateTime.UtcNow;
-            var saudiNow = now.AddHours(3); // UTC+3
-            var nextRun = saudiNow.Date.AddHours(9);
-
-            if (saudiNow > nextRun)
-                nextRun = nextRun.AddDays(1);
-
-            var delay = nextRun.AddHours(-3) - now;
-
-            _logger.LogInformation("Next subscription check at: {NextRun} (Saudi Time)", nextRun);
-
-            await Task.Delay(delay, stoppingToken);
+            _logger.LogInformation("Running subscription check at: {Time} (UTC)", DateTime.UtcNow);
 
             try
             {
@@ -53,6 +41,9 @@ public class SubscriptionExpirationJob : BackgroundService
             {
                 _logger.LogError(ex, "Error in subscription expiration job");
             }
+
+            // ✅ انتظر ساعة قبل التشغيل التالي
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
     }
 

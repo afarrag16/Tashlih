@@ -397,28 +397,32 @@ public class SubscriptionService : ISubscriptionService
     /// </summary>
     public async Task<AdminSubscriptionsResponse> GetAllSubscriptionsAsync()
     {
+        // جيب آخر اشتراك لكل مورد
         var subscriptions = await _context.Subscriptions
             .Include(s => s.Plan)
             .Include(s => s.Supplier)
-            .OrderByDescending(s => s.CreatedAt)
+            .GroupBy(s => s.SupplierId)
+            .Select(g => g.OrderByDescending(s => s.CreatedAt).First())
             .ToListAsync();
 
-        var subscriptionsDto = subscriptions.Select(s => new AdminSubscriptionDto
-        {
-            Id = s.Id,
-            SupplierId = s.SupplierId,
-            SupplierName = s.Supplier?.BusinessNameAr,
-            SupplierPhone = s.Supplier?.Phone,
-            PlanName = s.Plan?.NameAr,
-            Price = s.Plan?.Price ?? 0,
-            Status = s.Status,
-            StatusAr = GetStatusAr(s.Status),
-            StartsAt = s.StartsAt,
-            EndsAt = s.EndsAt,
-            AmountPaid = s.AmountPaid,
-            PaymentMethod = s.PaymentMethod,
-            CreatedAt = s.CreatedAt
-        }).ToList();
+        var subscriptionsDto = subscriptions
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new AdminSubscriptionDto
+            {
+                Id = s.Id,
+                SupplierId = s.SupplierId,
+                SupplierName = s.Supplier?.BusinessNameAr,
+                SupplierPhone = s.Supplier?.Phone,
+                PlanName = s.Plan?.NameAr,
+                Price = s.Plan?.Price ?? 0,
+                Status = s.Status,
+                StatusAr = GetStatusAr(s.Status),
+                StartsAt = s.StartsAt,
+                EndsAt = s.EndsAt,
+                AmountPaid = s.AmountPaid,
+                PaymentMethod = s.PaymentMethod,
+                CreatedAt = s.CreatedAt
+            }).ToList();
 
         return new AdminSubscriptionsResponse
         {

@@ -1,8 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Tashlih.Application.DTOs.Parts;
 using Tashlih.Application.Interfaces;
 using Tashlih.Core.Entities;
@@ -584,9 +580,13 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> GetAllPartsAsync(int page, int pageSize)
         {
+            // جيب IDs القطع المسموح بعرضها
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var query = _context.VPartsDetaileds
                 .AsNoTracking()
-                .Where(p => p.Status == "available");
+                .Where(p => p.Status == "available")
+                .Where(p => allowedPartIds.Contains(p.Id)); // ✅ فقط القطع المسموحة
 
             var totalItems = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
@@ -661,16 +661,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> SearchPartsAsync(SearchPartsRequest request)
         {
-            // ✅ جلب الموردين اللي عندهم اشتراك فعال
-            var activeSupplierIds = await _context.Subscriptions
-                .Where(s => s.Status == "active" && s.EndsAt >= DateOnly.FromDateTime(DateTime.UtcNow))
-                .Select(s => s.SupplierId)
-                .ToListAsync();
-
+            // ✅ جلب IDs القطع المسموح بعرضها حسب حد الباقة
+            var allowedPartIds = await GetAllowedPartIdsAsync();
             var query = _context.VPartsDetaileds
                 .AsNoTracking()
                 .Where(p => p.Status == "available")
-                .Where(p => activeSupplierIds.Contains(p.SupplierId)); // ✅ فقط القطع اللي صاحبها عنده اشتراك فعال
+                .Where(p => allowedPartIds.Contains(p.Id)); // ✅ فقط القطع المسموحة
 
             // فلترة بالكلمة المفتاحية
             if (!string.IsNullOrEmpty(request.Keyword))
@@ -814,9 +810,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> GetPartsByCategoryAsync(long categoryId, int page, int pageSize)
         {
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var query = _context.VPartsDetaileds
                 .AsNoTracking()
-                .Where(p => p.Status == "available" && p.CategoryId == categoryId);
+                .Where(p => p.Status == "available" && p.CategoryId == categoryId)
+                .Where(p => allowedPartIds.Contains(p.Id)); // ✅ فقط القطع المسموحة
 
             var totalItems = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
@@ -860,9 +859,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> GetPartsBySupplierAsync(long supplierId, int page, int pageSize)
         {
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var query = _context.VPartsDetaileds
                 .AsNoTracking()
-                .Where(p => p.Status == "available" && p.SupplierId == supplierId);
+                .Where(p => p.Status == "available" && p.SupplierId == supplierId)
+                .Where(p => allowedPartIds.Contains(p.Id)); // ✅ فقط القطع المسموحة
 
             var totalItems = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
@@ -906,9 +908,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> GetFeaturedPartsAsync(int count)
         {
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var parts = await _context.VPartsDetaileds
                 .AsNoTracking()
                 .Where(p => p.Status == "available" && p.IsFeatured)
+                .Where(p => allowedPartIds.Contains(p.Id)) // ✅ فقط القطع المسموحة
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(count)
                 .ToListAsync();
@@ -937,9 +942,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<PartsListResponse> GetLatestPartsAsync(int count)
         {
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var parts = await _context.VPartsDetaileds
                 .AsNoTracking()
                 .Where(p => p.Status == "available")
+                .Where(p => allowedPartIds.Contains(p.Id)) // ✅ فقط القطع المسموحة
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(count)
                 .ToListAsync();
@@ -981,8 +989,11 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         public async Task<SearchPartsResponse> SearchWithFiltersAsync(SearchPartsRequest request)
         {
+            var allowedPartIds = await GetAllowedPartIdsAsync();
+
             var query = _context.VPartsDetaileds
-                .Where(p => p.Status == "available");
+                .Where(p => p.Status == "available")
+                .Where(p => allowedPartIds.Contains(p.Id)); // ✅ فقط القطع المسموحة
 
             // فلترة بالكلمة المفتاحية
             if (!string.IsNullOrEmpty(request.Keyword))
@@ -1339,6 +1350,36 @@ namespace Tashlih.Infrastructure.Services
                 (short from, short to) when from == to => from.ToString(),
                 (short from, short to) => $"{from} - {to}"
             };
+        }
+
+        /// <summary>
+        /// جلب IDs القطع المسموح بعرضها لكل مورد حسب حد الباقة
+        /// </summary>
+        private async Task<List<long>> GetAllowedPartIdsAsync()
+        {
+            // جيب كل الموردين اللي عندهم اشتراك فعال مع حد القطع
+            var activeSubscriptions = await _context.Subscriptions
+                .Include(s => s.Plan)
+                .Where(s => s.Status == "active" && s.EndsAt >= DateOnly.FromDateTime(DateTime.UtcNow))
+                .Select(s => new { s.SupplierId, MaxParts = s.Plan.MaxParts })
+                .ToListAsync();
+
+            var allowedPartIds = new List<long>();
+
+            foreach (var sub in activeSubscriptions)
+            {
+                // جيب أحدث X قطعة لكل مورد
+                var supplierPartIds = await _context.Parts
+                    .Where(p => p.SupplierId == sub.SupplierId && p.Status == "available")
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(sub.MaxParts ?? 15)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                allowedPartIds.AddRange(supplierPartIds);
+            }
+
+            return allowedPartIds;
         }
 
         #endregion
