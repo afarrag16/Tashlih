@@ -67,8 +67,8 @@ public class SubscriptionDto
     public string? PlanName { get; set; }
     public string? Status { get; set; }
     public string? StatusAr { get; set; }
-    public DateOnly? StartsAt { get; set; }
-    public DateOnly? EndsAt { get; set; }
+    public DateTime? StartsAt { get; set; }
+    public DateTime? EndsAt { get; set; }
     public int? DaysRemaining { get; set; }
     public decimal? AmountPaid { get; set; }
     public string? PaymentMethod { get; set; }
@@ -158,8 +158,8 @@ public class AdminSubscriptionDto
     public decimal Price { get; set; }
     public string? Status { get; set; }
     public string? StatusAr { get; set; }
-    public DateOnly? StartsAt { get; set; }
-    public DateOnly? EndsAt { get; set; }
+    public DateTime? StartsAt { get; set; }
+    public DateTime? EndsAt { get; set; }
     public decimal? AmountPaid { get; set; }
     public string? PaymentMethod { get; set; }
     public DateTime? CreatedAt { get; set; }

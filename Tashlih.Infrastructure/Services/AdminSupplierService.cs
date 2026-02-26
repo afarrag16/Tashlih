@@ -204,7 +204,7 @@ public class AdminSupplierService
                 StartsAt = subscription.StartsAt,
                 EndsAt = subscription.EndsAt,
                 DaysRemaining = subscription.EndsAt.HasValue
-                                  ? (subscription.EndsAt.Value.ToDateTime(TimeOnly.MinValue) - DateTime.UtcNow).Days
+                                  ? (subscription.EndsAt.Value - DateTime.UtcNow).Days
                                   : 0
             } : null
         };
@@ -410,8 +410,8 @@ public class AdminSupplierService
                         SupplierId = supplier.Id,
                         PlanId = freePlan.Id,
                         Status = "active",
-                        StartsAt = DateOnly.FromDateTime(DateTime.UtcNow),
-                        EndsAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(freePlan.DurationDays)),
+                        StartsAt = DateTime.UtcNow,
+                        EndsAt = DateTime.UtcNow.AddDays(freePlan.DurationDays),
                         AmountPaid = 0,
                         PaymentMethod = "free",
                         CreatedAt = DateTime.UtcNow,

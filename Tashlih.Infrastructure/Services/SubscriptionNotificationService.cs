@@ -21,7 +21,7 @@ public class SubscriptionNotificationService
     /// </summary>
     public async Task SendExpirationNotificationsAsync()
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateTime.UtcNow;
 
         // الاشتراكات اللي هتنتهي خلال 7 أيام
         var in7Days = today.AddDays(7);

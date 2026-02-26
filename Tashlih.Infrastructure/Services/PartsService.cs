@@ -1357,10 +1357,12 @@ namespace Tashlih.Infrastructure.Services
         /// </summary>
         private async Task<List<long>> GetAllowedPartIdsAsync()
         {
+            var now = DateTime.UtcNow;
+
             // جيب كل الموردين اللي عندهم اشتراك فعال مع حد القطع
             var activeSubscriptions = await _context.Subscriptions
                 .Include(s => s.Plan)
-                .Where(s => s.Status == "active" && s.EndsAt >= DateOnly.FromDateTime(DateTime.UtcNow))
+                .Where(s => s.Status == "active" && s.EndsAt >= now)  // ✅ تم التعديل
                 .Select(s => new { s.SupplierId, MaxParts = s.Plan.MaxParts })
                 .ToListAsync();
 

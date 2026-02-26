@@ -13,9 +13,9 @@ public partial class Subscription
 
     public string Status { get; set; } = null!;
 
-    public DateOnly? StartsAt { get; set; }
+    public DateTime? StartsAt { get; set; }
 
-    public DateOnly? EndsAt { get; set; }
+    public DateTime? EndsAt { get; set; }
 
     public decimal? AmountPaid { get; set; }
 

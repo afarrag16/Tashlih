@@ -1852,7 +1852,7 @@ namespace Tashlih.Infrastructure.Migrations
 
                     b.HasIndex("Token");
 
-                    b.ToTable("SupplierSessions");
+                    b.ToTable("SupplierSessions", (string)null);
                 });
 
             modelBuilder.Entity("Tashlih.Core.Entities.User", b =>

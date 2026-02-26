@@ -420,8 +420,8 @@ namespace Tashlih.Infrastructure.Services
 
             // تفعيل الاشتراك
             subscription.Status = "active";
-            subscription.StartsAt = DateOnly.FromDateTime(DateTime.UtcNow);
-            subscription.EndsAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(subscription.Plan.DurationDays));
+            subscription.StartsAt = DateTime.UtcNow;
+            subscription.EndsAt = DateTime.UtcNow.AddDays(subscription.Plan.DurationDays);
             subscription.AmountPaid = amount;
             subscription.PaymentReference = paymentReference;
             subscription.PaymentMethod = "MyFatoorah";

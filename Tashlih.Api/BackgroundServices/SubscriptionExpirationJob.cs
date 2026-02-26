@@ -20,7 +20,19 @@ public class SubscriptionExpirationJob : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Running subscription check at: {Time} (UTC)", DateTime.UtcNow);
+            // حساب الوقت للساعة 3 فجراً بتوقيت السعودية
+            var now = DateTime.UtcNow;
+            var saudiNow = now.AddHours(3); // UTC+3
+            var nextRun = saudiNow.Date.AddHours(3); // 3 فجراً
+
+            if (saudiNow > nextRun)
+                nextRun = nextRun.AddDays(1);
+
+            var delay = nextRun.AddHours(-3) - now;
+
+            _logger.LogInformation("Next subscription check at: {NextRun} (Saudi Time)", nextRun);
+
+            await Task.Delay(delay, stoppingToken);
 
             try
             {
@@ -41,9 +53,6 @@ public class SubscriptionExpirationJob : BackgroundService
             {
                 _logger.LogError(ex, "Error in subscription expiration job");
             }
-
-            // ✅ انتظر ساعة قبل التشغيل التالي
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
     }
 
@@ -53,12 +62,12 @@ public class SubscriptionExpirationJob : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TashlihContext>();
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;  // ✅ تم التعديل
 
         // جيب الاشتراكات المنتهية (مدفوعة فقط)
         var expiredSubscriptions = await context.Subscriptions
             .Include(s => s.Plan)
-            .Where(s => s.Status == "active" && s.EndsAt < today && s.Plan.Price > 0)
+            .Where(s => s.Status == "active" && s.EndsAt < now && s.Plan.Price > 0)  // ✅ تم التعديل
             .ToListAsync();
 
         if (!expiredSubscriptions.Any())
@@ -100,10 +109,11 @@ public class SubscriptionExpirationJob : BackgroundService
                 SupplierId = expiredSub.SupplierId,
                 PlanId = freePlan.Id,
                 Status = "active",
-                StartsAt = today,
-                EndsAt = today.AddDays(freePlan.DurationDays),
+                StartsAt = now,  // ✅ تم التعديل
+                EndsAt = now.AddDays(freePlan.DurationDays),  // ✅ تم التعديل
                 AmountPaid = 0,
                 PaymentMethod = "free",
+                AutoRenew = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

@@ -93,8 +93,8 @@ public class SupplierSubscriptionDto
     public long Id { get; set; }
     public string? PlanName { get; set; }
     public string? Status { get; set; }
-    public DateOnly? StartsAt { get; set; }
-    public DateOnly? EndsAt { get; set; }
+    public DateTime? StartsAt { get; set; }
+    public DateTime? EndsAt { get; set; }
     public int DaysRemaining { get; set; }
 }
 

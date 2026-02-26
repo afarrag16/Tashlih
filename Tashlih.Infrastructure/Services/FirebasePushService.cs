@@ -69,11 +69,12 @@ public class FirebasePushService : IFirebasePushService
         try
         {
             string? fcmToken = null;
+            var now = DateTime.UtcNow;
 
             if (userType == "supplier")
             {
                 var session = await _context.SupplierSessions
-                    .Where(s => s.SupplierId == userId && s.IsActive && s.FcmToken != null)
+                    .Where(s => s.SupplierId == userId && s.IsActive && s.FcmToken != null && s.ExpiresAt > now)
                     .OrderByDescending(s => s.UpdatedAt)
                     .FirstOrDefaultAsync();
 
@@ -83,7 +84,7 @@ public class FirebasePushService : IFirebasePushService
             else
             {
                 var session = await _context.UserSessions
-                    .Where(s => s.UserId == userId && s.IsActive && s.FcmToken != null)
+                    .Where(s => s.UserId == userId && s.IsActive && s.FcmToken != null && s.ExpiresAt > now)
                     .OrderByDescending(s => s.UpdatedAt)
                     .FirstOrDefaultAsync();
 

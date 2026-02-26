@@ -136,8 +136,8 @@ public class SubscriptionService : ISubscriptionService
             SupplierId = supplierId,
             PlanId = request.PlanId,
             Status = plan.Price == 0 ? "active" : "pending",
-            StartsAt = DateOnly.FromDateTime(DateTime.UtcNow),
-            EndsAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(plan.DurationDays)),
+            StartsAt = DateTime.UtcNow,
+            EndsAt = DateTime.UtcNow.AddDays(plan.DurationDays),
             AmountPaid = plan.Price,
             PaymentMethod = request.PaymentMethod,
             AutoRenew = request.AutoRenew,
@@ -452,8 +452,8 @@ public class SubscriptionService : ISubscriptionService
             SupplierId = supplierId,
             PlanId = freePlan.Id,
             Status = "active",
-            StartsAt = DateOnly.FromDateTime(DateTime.UtcNow),
-            EndsAt = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(freePlan.DurationDays)),
+            StartsAt = DateTime.UtcNow,
+            EndsAt = DateTime.UtcNow.AddDays(freePlan.DurationDays),
             AmountPaid = 0,
             AutoRenew = true,
             CreatedAt = DateTime.UtcNow
@@ -571,8 +571,8 @@ public class SubscriptionService : ISubscriptionService
     private SubscriptionDto MapToSubscriptionDto(Subscription subscription)
     {
         var daysRemaining = subscription.EndsAt.HasValue
-            ? (subscription.EndsAt.Value.ToDateTime(TimeOnly.MinValue) - DateTime.UtcNow).Days
-            : 0;
+                   ? (subscription.EndsAt.Value - DateTime.UtcNow).Days
+                   :  0;
 
         return new SubscriptionDto
         {
